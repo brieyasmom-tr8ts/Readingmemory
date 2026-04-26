@@ -96,7 +96,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .suggest-list.open{display:block}
 .suggest-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--fog);display:flex;gap:10px;align-items:center}
 .suggest-item:active{background:var(--cream)}
-.suggest-item-cover{width:32px;height:46px;border-radius:4px;background:var(--cream-dk);overflow:hidden;flex-shrink:0}
+.suggest-item-cover{width:40px;height:58px;border-radius:4px;background:var(--cream-dk);overflow:hidden;flex-shrink:0}
 .suggest-item-cover img{width:100%;height:100%;object-fit:cover}
 .suggest-item-text{flex:1;min-width:0}
 .suggest-item-title{font-size:.88rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -464,7 +464,7 @@ const CATEGORIES={novels:{label:'Novels',color:'var(--amber)',subs:['Fiction','F
 const SOURCES=['Kindle Unlimited','Libby','Purchased','Audible','Library','Borrowed','Other'];
 const SORT_OPTIONS=[{key:'recent',label:'Recent'},{key:'alpha',label:'A-Z'},{key:'rating',label:'Rating'},{key:'finished',label:'Date Finished'},{key:'started',label:'Date Started'}];
 
-let books=[],customSubs={},currentBookId=null,currentFilter='all',currentSort='recent',tempCoverURL=null,addStatus='want',addCatMain=null,addCatSub=null,addSource='',entryPos=null,entryEmoji=null,suggestTimer=null,authMode='login',currentUser=null,noteTimer=null;
+let books=[],customSubs={},currentBookId=null,currentFilter='all',currentSort='recent',tempCoverURL=null,addStatus='want',addCatMain=null,addCatSub=null,addSource='',entryPos=null,entryEmoji=null,suggestTimer=null,authMode='login',currentUser=null,noteTimer=null,pendingDescription='';
 
 /* === API === */
 async function api(p,o={}){const r=await fetch('/api/'+p,{method:o.method||'GET',headers:o.body?{'Content-Type':'application/json'}:{},body:o.body?JSON.stringify(o.body):undefined,credentials:'same-origin'});const d=await r.json();if(!r.ok)throw new Error(d.error||'Request failed');return d;}
@@ -531,7 +531,7 @@ function openAddView(){
   document.getElementById('add-title').value='';document.getElementById('add-author').value='';document.getElementById('add-recby').value='';
   document.getElementById('cover-preview').style.display='none';document.getElementById('cover-placeholder').style.display='flex';
   document.getElementById('dup-area').innerHTML='';document.getElementById('suggest-list').classList.remove('open');
-  tempCoverURL=null;addStatus='want';addCatMain=null;addCatSub=null;addSource='';
+  tempCoverURL=null;addStatus='want';addCatMain=null;addCatSub=null;addSource='';pendingDescription='';
   document.querySelectorAll('#view-add .pill[data-status]').forEach((b,i)=>b.classList.toggle('active',i===0));
   document.getElementById('recby-group').style.display='';
   renderCatPicker();renderAddSources();showView('add');
@@ -682,11 +682,22 @@ function renderCatPicker(){const row=document.getElementById('cat-main-row');row
 function renderSubCatPicker(){const g=document.getElementById('subcat-group'),row=document.getElementById('cat-sub-row');if(!addCatMain){g.style.display='none';return;}g.style.display='';row.innerHTML='';const defaults=CATEGORIES[addCatMain].subs;const custom=(customSubs[addCatMain]||[]).filter(s=>!defaults.includes(s));[...defaults,...custom].forEach(s=>{const btn=document.createElement('button');btn.className='pill sm'+(addCatSub===s?' active':'');btn.textContent=s;btn.onclick=()=>{addCatSub=s;renderSubCatPicker();};row.appendChild(btn);});const ab=document.createElement('button');ab.className='pill sm pill-add';ab.textContent='+ Add';ab.onclick=()=>{const n=prompt('New sub-category:');if(n?.trim()){if(!customSubs[addCatMain])customSubs[addCatMain]=[];if(!customSubs[addCatMain].includes(n.trim()))customSubs[addCatMain].push(n.trim());addCatSub=n.trim();renderSubCatPicker();}};row.appendChild(ab);}
 
 function onTitleInput(){clearTimeout(suggestTimer);const q=document.getElementById('add-title').value.trim();if(q.length<3){document.getElementById('suggest-list').classList.remove('open');checkDuplicate(q);return;}checkDuplicate(q);suggestTimer=setTimeout(()=>fetchSuggestions(q),400);}
-async function fetchSuggestions(q){try{const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5&fields=title,author_name,cover_i,key`);const d=await r.json();const list=document.getElementById('suggest-list');if(!d.docs?.length){list.classList.remove('open');return;}list.innerHTML=d.docs.map(x=>{const a=(x.author_name||[])[0]||'';const c=x.cover_i?`https://covers.openlibrary.org/b/id/${x.cover_i}-S.jpg`:'';return`<div class="suggest-item" onclick="pickSuggestion(this)" data-title="${esc(x.title)}" data-author="${esc(a)}" data-cover="${x.cover_i||0}"><div class="suggest-item-cover">${c?`<img src="${c}" alt="">`:''}</div><div class="suggest-item-text"><div class="suggest-item-title">${esc(x.title)}</div><div class="suggest-item-author">${esc(a)}</div></div></div>`;}).join('')+'<div class="suggest-dismiss" onclick="document.getElementById(\'suggest-list\').classList.remove(\'open\')">Dismiss suggestions</div>';list.classList.add('open');}catch(e){}}
-function pickSuggestion(el){document.getElementById('add-title').value=el.dataset.title;document.getElementById('add-author').value=el.dataset.author;document.getElementById('suggest-list').classList.remove('open');const cid=parseInt(el.dataset.cover);if(cid&&!tempCoverURL){tempCoverURL=`https://covers.openlibrary.org/b/id/${cid}-M.jpg`;document.getElementById('cover-preview').src=tempCoverURL;document.getElementById('cover-preview').style.display='block';document.getElementById('cover-placeholder').style.display='none';}checkDuplicate(el.dataset.title);}
+async function fetchSuggestions(q){try{const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5&fields=title,author_name,cover_i,key`);const d=await r.json();const list=document.getElementById('suggest-list');if(!d.docs?.length){list.classList.remove('open');return;}list.innerHTML=d.docs.map(x=>{const a=(x.author_name||[])[0]||'';const c=x.cover_i?`https://covers.openlibrary.org/b/id/${x.cover_i}-M.jpg`:'';return`<div class="suggest-item" onclick="pickSuggestion(this)" data-title="${esc(x.title)}" data-author="${esc(a)}" data-cover="${x.cover_i||0}" data-key="${esc(x.key||'')}"><div class="suggest-item-cover">${c?`<img src="${c}" alt="">`:''}</div><div class="suggest-item-text"><div class="suggest-item-title">${esc(x.title)}</div><div class="suggest-item-author">${esc(a)}</div></div></div>`;}).join('')+'<div class="suggest-dismiss" onclick="document.getElementById(\'suggest-list\').classList.remove(\'open\')">Dismiss suggestions</div>';list.classList.add('open');}catch(e){}}
+function pickSuggestion(el){document.getElementById('add-title').value=el.dataset.title;document.getElementById('add-author').value=el.dataset.author;document.getElementById('suggest-list').classList.remove('open');const cid=parseInt(el.dataset.cover);if(cid){tempCoverURL=`https://covers.openlibrary.org/b/id/${cid}-L.jpg`;document.getElementById('cover-preview').src=tempCoverURL;document.getElementById('cover-preview').style.display='block';document.getElementById('cover-placeholder').style.display='none';toast('Cover image added!');}checkDuplicate(el.dataset.title);
+  // Fetch book description from Open Library
+  const key=el.dataset.key;if(key)fetchBookDescription(key);
+}
+async function fetchBookDescription(key){
+  try{
+    const r=await fetch(`https://openlibrary.org${key}.json`);const d=await r.json();
+    let desc=d.description;
+    if(typeof desc==='object')desc=desc.value;
+    if(desc){pendingDescription=desc.substring(0,500);toast('Book description found!');}
+  }catch(x){}
+}
 function checkDuplicate(t){const a=document.getElementById('dup-area');if(!t||t.length<3){a.innerHTML='';return;}const m=books.find(b=>b.title.toLowerCase()===t.toLowerCase());if(m){const w=m.finishedAt?new Date(m.finishedAt).toLocaleDateString('en-US',{month:'short',year:'numeric'}):'';a.innerHTML=`<div class="dup-warning" style="margin-top:8px"><p><strong>You've already got this book!</strong> "${esc(m.title)}" ${w?'('+w+')':''} - ${statusLabel(m.status)}</p><button class="btn-secondary" onclick="currentBookId='${m.id}';showView('detail')">View It</button></div>`;}else a.innerHTML='';}
 
-async function saveBook(){const t=document.getElementById('add-title').value.trim(),a=document.getElementById('add-author').value.trim();if(!t){toast('Please enter a title');return;}const now=Date.now();const b={id:now.toString(),title:t,author:a,cover:tempCoverURL||null,status:addStatus,category:addCatMain||null,subCategory:addCatSub||null,source:addSource||'',recommendedBy:addStatus==='want'?document.getElementById('add-recby').value.trim():'',recommend:false,entries:[],notes:{about:'',final:''},aiSummary:null,rating:null,startedAt:addStatus==='reading'?now:null,finishedAt:addStatus==='finished'?now:null,createdAt:now};books.unshift(b);currentBookId=b.id;toast('Book added!');showView('detail');await apiSaveBook(b);}
+async function saveBook(){const t=document.getElementById('add-title').value.trim(),a=document.getElementById('add-author').value.trim();if(!t){toast('Please enter a title');return;}const now=Date.now();const b={id:now.toString(),title:t,author:a,cover:tempCoverURL||null,status:addStatus,category:addCatMain||null,subCategory:addCatSub||null,source:addSource||'',recommendedBy:addStatus==='want'?document.getElementById('add-recby').value.trim():'',recommend:false,entries:[],notes:{about:pendingDescription||'',final:''},aiSummary:null,rating:null,startedAt:addStatus==='reading'?now:null,finishedAt:addStatus==='finished'?now:null,createdAt:now};pendingDescription='';books.unshift(b);currentBookId=b.id;toast('Book added!');showView('detail');await apiSaveBook(b);}
 
 /* === DETAIL === */
 function getBook(id){return books.find(b=>b.id===id);}
