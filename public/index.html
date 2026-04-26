@@ -705,6 +705,12 @@ function pickSuggestion(el){document.getElementById('add-title').value=el.datase
   // Fetch book description from Open Library
   const key=el.dataset.key;if(key)fetchBookDescription(key);
 }
+async function fetchBookSummary(book){
+  try{
+    const d=await api('book-summary',{method:'POST',body:{title:book.title,author:book.author,category:book.category&&CATEGORIES[book.category]?CATEGORIES[book.category].label:null}});
+    if(d.summary){book.notes.about=d.summary;const b=getBook(book.id);if(b){b.notes.about=d.summary;}await apiSaveBook(book);if(currentBookId===book.id){document.getElementById('note-about').value=d.summary;}toast('Book summary added!');}
+  }catch(x){}
+}
 async function fetchBookDescription(key){
   try{
     const r=await fetch(`https://openlibrary.org${key}.json`);const d=await r.json();
@@ -715,7 +721,9 @@ async function fetchBookDescription(key){
 }
 function checkDuplicate(t){const a=document.getElementById('dup-area');if(!t||t.length<3){a.innerHTML='';return;}const m=books.find(b=>b.title.toLowerCase()===t.toLowerCase());if(m){const w=m.finishedAt?new Date(m.finishedAt).toLocaleDateString('en-US',{month:'short',year:'numeric'}):'';a.innerHTML=`<div class="dup-warning" style="margin-top:8px"><p><strong>You've already got this book!</strong> "${esc(m.title)}" ${w?'('+w+')':''} - ${statusLabel(m.status)}</p><button class="btn-secondary" onclick="currentBookId='${m.id}';showView('detail')">View It</button></div>`;}else a.innerHTML='';}
 
-async function saveBook(){const t=document.getElementById('add-title').value.trim(),a=document.getElementById('add-author').value.trim();if(!t){toast('Please enter a title');return;}const now=Date.now();const b={id:now.toString(),title:t,author:a,cover:tempCoverURL||null,status:addStatus,category:addCatMain||null,subCategory:addCatSub||null,source:addSource||'',recommendedBy:addStatus==='want'?document.getElementById('add-recby').value.trim():'',recommend:false,entries:[],notes:{about:pendingDescription||'',final:''},aiSummary:null,rating:null,startedAt:addStatus==='reading'?now:null,finishedAt:addStatus==='finished'?now:null,createdAt:now};pendingDescription='';books.unshift(b);currentBookId=b.id;toast('Book added!');showView('detail');await apiSaveBook(b);}
+async function saveBook(){const t=document.getElementById('add-title').value.trim(),a=document.getElementById('add-author').value.trim();if(!t){toast('Please enter a title');return;}const now=Date.now();const b={id:now.toString(),title:t,author:a,cover:tempCoverURL||null,status:addStatus,category:addCatMain||null,subCategory:addCatSub||null,source:addSource||'',recommendedBy:addStatus==='want'?document.getElementById('add-recby').value.trim():'',recommend:false,entries:[],notes:{about:pendingDescription||'',final:''},aiSummary:null,rating:null,startedAt:addStatus==='reading'?now:null,finishedAt:addStatus==='finished'?now:null,createdAt:now};pendingDescription='';
+  // If want-to-read and no description yet, fetch AI summary in background
+  if(b.status==='want'&&!b.notes.about){fetchBookSummary(b);}books.unshift(b);currentBookId=b.id;toast('Book added!');showView('detail');await apiSaveBook(b);}
 
 /* === DETAIL === */
 function getBook(id){return books.find(b=>b.id===id);}
