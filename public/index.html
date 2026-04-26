@@ -109,14 +109,15 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 /* Crop modal */
 .crop-overlay{display:none;position:fixed;inset:0;z-index:700;background:rgba(26,20,16,.95);flex-direction:column;align-items:center;justify-content:center;padding:20px}
 .crop-overlay.open{display:flex}
-.crop-frame{position:relative;width:260px;height:380px;border:2px solid var(--amber);border-radius:var(--radius);overflow:hidden;background:#000}
-.crop-canvas{display:block;width:100%;height:100%}
-.crop-controls{display:flex;align-items:center;gap:12px;margin-top:16px;width:260px}
-.crop-controls label{color:rgba(255,255,255,.5);font-size:.75rem;flex-shrink:0}
-.crop-slider{-webkit-appearance:none;appearance:none;flex:1;height:4px;background:rgba(255,255,255,.2);border-radius:2px;outline:none}
-.crop-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--amber);cursor:pointer}
-.crop-slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--amber);cursor:pointer;border:none}
-.crop-actions{display:flex;gap:12px;margin-top:16px}
+.crop-area{position:relative;max-width:90vw;max-height:60vh;touch-action:none;user-select:none;-webkit-user-select:none}
+.crop-area img{display:block;max-width:90vw;max-height:60vh;pointer-events:none}
+.crop-box{position:absolute;border:2px solid var(--amber);box-shadow:0 0 0 9999px rgba(0,0,0,.6);cursor:move;touch-action:none}
+.crop-handle{position:absolute;width:24px;height:24px;background:var(--amber);border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.crop-handle.tl{top:0;left:0;cursor:nwse-resize}
+.crop-handle.tr{top:0;right:0;transform:translate(50%,-50%);cursor:nesw-resize}
+.crop-handle.bl{bottom:0;left:0;transform:translate(-50%,50%);cursor:nesw-resize}
+.crop-handle.br{bottom:0;right:0;transform:translate(50%,50%);cursor:nwse-resize}
+.crop-actions{display:flex;gap:12px;margin-top:20px}
 .crop-hint{color:rgba(255,255,255,.5);font-size:.78rem;margin-top:10px;text-align:center}
 /* Detail */
 .hero{width:100%;background:var(--ink);padding:28px 20px 24px;display:flex;gap:18px;align-items:flex-end;position:relative}
@@ -251,7 +252,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 <body>
 
 <div id="auth-screen" class="auth-screen" style="display:none">
-  <div class="auth-logo"><img src="/logo.svg" alt="ReadThat.me" style="width:300px;max-width:90%;height:auto;margin-bottom:16px"></div>
+  <div class="auth-logo"><img src="/logo.png" alt="ReadThat.me" style="width:260px;max-width:80%;height:auto;margin-bottom:16px"></div>
   <div class="auth-sub">Track your reads. Remember how they felt.</div>
   <div class="auth-form">
     <input type="text" class="field-input" id="auth-name" placeholder="Your name" style="display:none">
@@ -265,7 +266,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 
 <div id="app" style="display:none">
   <div id="view-home" class="view active">
-    <div class="topbar"><h1 style="display:flex;align-items:center;gap:8px"><img src="/icon.svg" alt="" width="28" height="28" style="border-radius:6px"> ReadThat.me</h1><button class="btn-icon" onclick="showView('stats')">&#x1f4ca;</button></div>
+    <div class="topbar"><h1 style="display:flex;align-items:center;gap:8px"><img src="/logo.png" alt="" height="32" style="border-radius:4px"> ReadThat.me</h1><button class="btn-icon" onclick="showView('stats')">&#x1f4ca;</button></div>
     <div class="auth-bar" id="user-bar"><span id="user-name-display"></span><button onclick="doLogout()">Log out</button></div>
     <div class="stats-strip" id="home-stats"></div>
     <div class="search-sort-bar">
@@ -426,14 +427,16 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 <div class="confirm-overlay" id="confirm-modal"><div class="confirm-box"><p id="confirm-msg"></p><div class="confirm-actions"><button class="btn-secondary" onclick="closeConfirm()">Cancel</button><button class="btn-danger" id="confirm-btn">Confirm</button></div></div></div>
 
 <div class="crop-overlay" id="crop-modal">
-  <div class="crop-frame" id="crop-frame">
-    <canvas class="crop-canvas" id="crop-canvas" width="520" height="760"></canvas>
+  <div class="crop-area" id="crop-area">
+    <img id="crop-img" src="" alt="">
+    <div class="crop-box" id="crop-box">
+      <div class="crop-handle tl" data-handle="tl"></div>
+      <div class="crop-handle tr" data-handle="tr"></div>
+      <div class="crop-handle bl" data-handle="bl"></div>
+      <div class="crop-handle br" data-handle="br"></div>
+    </div>
   </div>
-  <div class="crop-controls">
-    <label>Zoom</label>
-    <input type="range" class="crop-slider" id="crop-zoom" min="100" max="300" value="100" oninput="cropDraw()">
-  </div>
-  <div class="crop-hint">Drag to move, slider to zoom</div>
+  <div class="crop-hint">Drag corners to resize, drag inside to move</div>
   <div class="crop-actions">
     <button class="btn-secondary" onclick="cancelCrop()" style="color:#fff;border-color:rgba(255,255,255,.3)">Cancel</button>
     <button class="btn-primary amber" onclick="applyCrop()">Use This</button>
@@ -527,63 +530,115 @@ function handleCoverInput(e){
   e.target.value='';
 }
 
-/* Crop — canvas-based with drag + zoom */
-let cropImg=null,cropX=0,cropY=0,cropScale=1,cropDrag=false,cropLastX=0,cropLastY=0;
+/* Crop — draggable edges over the image */
+let cropBox={x:0,y:0,w:0,h:0},cropActive=null,cropStartPt=null,cropStartBox=null,cropImgEl=null;
+const CROP_RATIO=2/3; // width/height for book covers
+const MIN_CROP=60;
 
 function openCrop(dataURL){
-  cropImg=new Image();
-  cropImg.onload=()=>{
-    cropScale=1;cropX=0;cropY=0;
-    document.getElementById('crop-zoom').value=100;
+  const img=document.getElementById('crop-img');
+  img.onload=()=>{
+    const iw=img.offsetWidth,ih=img.offsetHeight;
+    // Default crop box centered, as large as possible at 2:3 ratio
+    let bh=ih*0.85,bw=bh*CROP_RATIO;
+    if(bw>iw*0.9){bw=iw*0.9;bh=bw/CROP_RATIO;}
+    cropBox={x:(iw-bw)/2,y:(ih-bh)/2,w:bw,h:bh};
+    updateCropBox();
     document.getElementById('crop-modal').classList.add('open');
-    cropDraw();
-    initCropDrag();
   };
-  cropImg.src=dataURL;
+  img.src=dataURL;
+  cropImgEl=img;
+  // Set up drag listeners
+  const area=document.getElementById('crop-area');
+  area.onmousedown=cropOnStart;area.ontouchstart=cropOnStart;
+  document.onmousemove=cropOnMove;document.ontouchmove=cropOnMove;
+  document.onmouseup=cropOnEnd;document.ontouchend=cropOnEnd;
 }
-function cropDraw(){
-  const canvas=document.getElementById('crop-canvas');
-  const ctx=canvas.getContext('2d');
-  const cw=canvas.width,ch=canvas.height;
-  ctx.clearRect(0,0,cw,ch);
-  ctx.fillStyle='#000';ctx.fillRect(0,0,cw,ch);
-  if(!cropImg)return;
-  cropScale=parseInt(document.getElementById('crop-zoom').value)/100;
-  // Fit image to fill frame width at scale=1, then apply zoom
-  const baseScale=cw/cropImg.naturalWidth;
-  const s=baseScale*cropScale;
-  const dw=cropImg.naturalWidth*s,dh=cropImg.naturalHeight*s;
-  // Clamp position so image covers the frame
-  const minX=Math.min(0,cw-dw),maxX=Math.max(0,cw-dw);
-  const minY=Math.min(0,ch-dh),maxY=Math.max(0,ch-dh);
-  cropX=Math.max(minX,Math.min(maxX,cropX));
-  cropY=Math.max(minY,Math.min(maxY,cropY));
-  ctx.drawImage(cropImg,cropX,cropY,dw,dh);
+
+function updateCropBox(){
+  const box=document.getElementById('crop-box');
+  box.style.left=cropBox.x+'px';box.style.top=cropBox.y+'px';
+  box.style.width=cropBox.w+'px';box.style.height=cropBox.h+'px';
 }
-function initCropDrag(){
-  const canvas=document.getElementById('crop-canvas');
-  function getXY(e){const t=e.touches?e.touches[0]:e;return{x:t.clientX,y:t.clientY};}
-  function onStart(e){e.preventDefault();cropDrag=true;const p=getXY(e);cropLastX=p.x;cropLastY=p.y;}
-  function onMove(e){if(!cropDrag)return;e.preventDefault();const p=getXY(e);const dx=(p.x-cropLastX)*2,dy=(p.y-cropLastY)*2;cropX+=dx;cropY+=dy;cropLastX=p.x;cropLastY=p.y;cropDraw();}
-  function onEnd(){cropDrag=false;}
-  canvas.addEventListener('mousedown',onStart);
-  canvas.addEventListener('mousemove',onMove);
-  canvas.addEventListener('mouseup',onEnd);
-  canvas.addEventListener('mouseleave',onEnd);
-  canvas.addEventListener('touchstart',onStart,{passive:false});
-  canvas.addEventListener('touchmove',onMove,{passive:false});
-  canvas.addEventListener('touchend',onEnd);
+
+function cropGetXY(e){const t=e.touches?e.touches[0]:e;return{x:t.clientX,y:t.clientY};}
+
+function cropOnStart(e){
+  e.preventDefault();
+  const target=e.target;
+  const p=cropGetXY(e);
+  cropStartPt=p;
+  cropStartBox={...cropBox};
+  if(target.dataset?.handle){
+    cropActive=target.dataset.handle;
+  }else if(target===document.getElementById('crop-box')||target.closest('#crop-box')){
+    cropActive='move';
+  }else{
+    cropActive=null;
+  }
 }
-function cancelCrop(){document.getElementById('crop-modal').classList.remove('open');cropImg=null;}
+
+function cropOnMove(e){
+  if(!cropActive||!cropStartPt)return;
+  e.preventDefault();
+  const p=cropGetXY(e);
+  const dx=p.x-cropStartPt.x,dy=p.y-cropStartPt.y;
+  const img=document.getElementById('crop-img');
+  const iw=img.offsetWidth,ih=img.offsetHeight;
+  const sb=cropStartBox;
+
+  if(cropActive==='move'){
+    cropBox.x=Math.max(0,Math.min(iw-cropBox.w,sb.x+dx));
+    cropBox.y=Math.max(0,Math.min(ih-cropBox.h,sb.y+dy));
+  }else{
+    // Handle resize — maintain 2:3 ratio
+    let newW,newH,newX,newY;
+    if(cropActive==='br'){
+      newW=Math.max(MIN_CROP,sb.w+dx);newH=newW/CROP_RATIO;
+      newX=sb.x;newY=sb.y;
+    }else if(cropActive==='bl'){
+      newW=Math.max(MIN_CROP,sb.w-dx);newH=newW/CROP_RATIO;
+      newX=sb.x+sb.w-newW;newY=sb.y;
+    }else if(cropActive==='tr'){
+      newW=Math.max(MIN_CROP,sb.w+dx);newH=newW/CROP_RATIO;
+      newX=sb.x;newY=sb.y+sb.h-newH;
+    }else if(cropActive==='tl'){
+      newW=Math.max(MIN_CROP,sb.w-dx);newH=newW/CROP_RATIO;
+      newX=sb.x+sb.w-newW;newY=sb.y+sb.h-newH;
+    }
+    // Clamp to image bounds
+    if(newX<0){newW+=newX;newH=newW/CROP_RATIO;newX=0;}
+    if(newY<0){newH+=newY;newW=newH*CROP_RATIO;newY=Math.max(0,sb.y+sb.h-newH);}
+    if(newX+newW>iw){newW=iw-newX;newH=newW/CROP_RATIO;}
+    if(newY+newH>ih){newH=ih-newY;newW=newH*CROP_RATIO;}
+    if(newW>=MIN_CROP&&newH>=MIN_CROP){cropBox={x:newX,y:newY,w:newW,h:newH};}
+  }
+  updateCropBox();
+}
+
+function cropOnEnd(){cropActive=null;cropStartPt=null;cropStartBox=null;}
+
+function cancelCrop(){
+  document.getElementById('crop-modal').classList.remove('open');
+  document.onmousemove=null;document.ontouchmove=null;
+  document.onmouseup=null;document.ontouchend=null;
+}
+
 function applyCrop(){
-  const canvas=document.getElementById('crop-canvas');
-  // Export at good quality
+  const img=document.getElementById('crop-img');
+  const scaleX=img.naturalWidth/img.offsetWidth;
+  const scaleY=img.naturalHeight/img.offsetHeight;
+  const sx=cropBox.x*scaleX,sy=cropBox.y*scaleY;
+  const sw=cropBox.w*scaleX,sh=cropBox.h*scaleY;
+  const canvas=document.createElement('canvas');
+  canvas.width=400;canvas.height=600;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(img,sx,sy,sw,sh,0,0,400,600);
   tempCoverURL=canvas.toDataURL('image/jpeg',0.85);
   document.getElementById('cover-preview').src=tempCoverURL;
   document.getElementById('cover-preview').style.display='block';
   document.getElementById('cover-placeholder').style.display='none';
-  document.getElementById('crop-modal').classList.remove('open');
-  cropImg=null;
+  cancelCrop();
 }
 
 function pickAddStatus(btn){document.querySelectorAll('#view-add .pill[data-status]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');addStatus=btn.dataset.status;document.getElementById('recby-group').style.display=addStatus==='want'?'':'none';}
