@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c8843a"/>
+      <stop offset="100%" stop-color="#a06830"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c8843a"/>
+      <stop offset="100%" stop-color="#e8a85a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Book mark icon -->
+  <g transform="translate(8, 8)">
+    <!-- Outer rounded square -->
+    <rect width="64" height="64" rx="14" fill="url(#g1)"/>
+
+    <!-- Open book -->
+    <g transform="translate(32, 36)">
+      <!-- Left page -->
+      <path d="M-2,-18 C-2,-18 -20,-20 -24,-14 L-24,14 C-20,10 -2,12 -2,12 Z" fill="#faf7f2" opacity="0.95"/>
+      <!-- Right page -->
+      <path d="M2,-18 C2,-18 20,-20 24,-14 L24,14 C20,10 2,12 2,12 Z" fill="#ede6d8" opacity="0.95"/>
+      <!-- Spine -->
+      <rect x="-2" y="-18" width="4" height="30" rx="1" fill="#f0ead8"/>
+      <!-- Lines -->
+      <line x1="-18" y1="-8" x2="-5" y2="-7" stroke="#c8843a" stroke-width="1.2" stroke-linecap="round" opacity="0.35"/>
+      <line x1="-19" y1="-2" x2="-5" y2="-1" stroke="#c8843a" stroke-width="1.2" stroke-linecap="round" opacity="0.25"/>
+      <line x1="-20" y1="4" x2="-5" y2="5" stroke="#c8843a" stroke-width="1.2" stroke-linecap="round" opacity="0.2"/>
+      <!-- Heart bookmark -->
+      <path d="M0,-22 C-2.5,-27 -8,-27 -8,-23 C-8,-20 0,-16 0,-16 C0,-16 8,-20 8,-23 C8,-27 2.5,-27 0,-22Z" fill="#b0605a"/>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(84, 0)">
+    <!-- "Read" -->
+    <text x="0" y="44" font-family="'Playfair Display', Georgia, serif" font-size="38" font-weight="700" fill="#1a1410" letter-spacing="-0.5">Read</text>
+    <!-- "That" in amber -->
+    <text x="100" y="44" font-family="'Playfair Display', Georgia, serif" font-size="38" font-weight="700" fill="#c8843a" letter-spacing="-0.5">That</text>
+    <!-- ".me" smaller, elegant -->
+    <text x="192" y="44" font-family="'Playfair Display', Georgia, serif" font-size="24" font-weight="400" fill="#7c5c3e" font-style="italic">.me</text>
+    <!-- Tagline -->
+    <text x="1" y="64" font-family="'Lato', sans-serif" font-size="11.5" font-weight="300" fill="#7c5c3e" letter-spacing="2.5" text-transform="uppercase">REMEMBER EVERY BOOK</text>
+  </g>
+</svg>
