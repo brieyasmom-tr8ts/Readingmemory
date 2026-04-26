@@ -169,6 +169,12 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .entry-delete{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--rose);background:transparent;transition:background .18s}
 .entry-delete:active{background:rgba(176,96,90,.15)}
 .notes-block{display:flex;flex-direction:column;gap:14px}
+.field-with-mic{position:relative}
+.field-with-mic textarea{padding-right:44px}
+.mic-btn{position:absolute;right:8px;bottom:12px;width:32px;height:32px;border-radius:50%;background:var(--fog);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:var(--sepia);transition:all .18s}
+.mic-btn:active,.mic-btn.recording{background:var(--rose);color:#fff}
+.mic-btn.recording{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 .position-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .emoji-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .emoji-btn{aspect-ratio:1;border-radius:var(--radius-sm);background:var(--cream);font-size:1.6rem;display:flex;align-items:center;justify-content:center;border:2px solid transparent;transition:transform var(--transition),border-color .18s}
@@ -252,7 +258,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 <body>
 
 <div id="auth-screen" class="auth-screen" style="display:none">
-  <div class="auth-logo"><img src="/logo.png" alt="ReadThat.me" style="width:260px;max-width:80%;height:auto;margin-bottom:16px"></div>
+  <div class="auth-logo"><img src="/logo.png" alt="ReadThat.me" style="width:360px;max-width:95%;height:auto;margin-bottom:24px"></div>
   <div class="auth-sub">Track your reads. Remember how they felt.</div>
   <div class="auth-form">
     <input type="text" class="field-input" id="auth-name" placeholder="Your name" style="display:none">
@@ -358,12 +364,18 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
         <div class="notes-block">
           <div class="field-group">
             <label class="field-label">What's this book about?</label>
-            <textarea class="field-input" id="note-about" placeholder="Brief description so you remember later..." rows="3" oninput="saveNotes()"></textarea>
+            <div class="field-with-mic">
+              <textarea class="field-input" id="note-about" placeholder="Brief description so you remember later..." rows="3" oninput="saveNotes()"></textarea>
+              <button class="mic-btn" onclick="toggleMic('note-about')" title="Voice input">&#x1f399;</button>
+            </div>
             <div class="save-indicator" id="save-about"></div>
           </div>
           <div class="field-group" id="final-thoughts-group" style="display:none">
             <label class="field-label">Final Thoughts</label>
-            <textarea class="field-input" id="note-final" placeholder="How did it end for you? Worth it?" rows="3" oninput="saveNotes()"></textarea>
+            <div class="field-with-mic">
+              <textarea class="field-input" id="note-final" placeholder="How did it end for you? Worth it?" rows="3" oninput="saveNotes()"></textarea>
+              <button class="mic-btn" onclick="toggleMic('note-final')" title="Voice input">&#x1f399;</button>
+            </div>
             <div class="save-indicator" id="save-final"></div>
           </div>
         </div>
@@ -400,7 +412,10 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
         </div>
       </div>
       <div class="field-group"><label class="field-label">What's on your mind? <span style="font-weight:400;text-transform:none">(optional)</span></label>
-        <textarea class="field-input" id="entry-note" placeholder="What's happening, what do you think..." rows="3"></textarea>
+        <div class="field-with-mic">
+          <textarea class="field-input" id="entry-note" placeholder="What's happening, what do you think..." rows="3"></textarea>
+          <button class="mic-btn" onclick="toggleMic('entry-note')" title="Voice input">&#x1f399;</button>
+        </div>
       </div>
       <button class="btn-primary" onclick="saveEntry()" style="align-self:center;margin-top:4px">Save Entry</button>
     </div>
@@ -459,7 +474,7 @@ async function api(p,o={}){const r=await fetch('/api/'+p,{method:o.method||'GET'
 function showAuth(){document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
 function showApp(){document.getElementById('auth-screen').style.display='none';document.getElementById('app').style.display='flex';}
 function toggleAuthMode(){authMode=authMode==='login'?'signup':'login';document.getElementById('auth-name').style.display=authMode==='signup'?'':'none';document.getElementById('auth-btn').textContent=authMode==='login'?'Log In':'Sign Up';document.getElementById('auth-switch-text').textContent=authMode==='login'?'No account?':'Already have one?';document.getElementById('auth-switch-btn').textContent=authMode==='login'?'Sign Up':'Log In';document.getElementById('auth-error').textContent='';}
-async function doAuth(){const e=document.getElementById('auth-email').value.trim(),p=document.getElementById('auth-pass').value,n=document.getElementById('auth-name').value.trim(),err=document.getElementById('auth-error');err.textContent='';if(!e||!p){err.textContent='Email and password required';return;}try{const d=await api(authMode==='login'?'login':'signup',{method:'POST',body:authMode==='signup'?{email:e,password:p,name:n}:{email:e,password:p}});currentUser=d.user;await loadBooks();document.getElementById('user-name-display').textContent=currentUser.name||currentUser.email;showApp();renderHome();}catch(x){err.textContent=x.message;}}
+async function doAuth(){const e=document.getElementById('auth-email').value.trim(),p=document.getElementById('auth-pass').value,n=document.getElementById('auth-name').value.trim(),err=document.getElementById('auth-error'),btn=document.getElementById('auth-btn');err.textContent='';if(!e||!p){err.textContent='Email and password required';return;}btn.disabled=true;btn.textContent='Loading...';try{const d=await api(authMode==='login'?'login':'signup',{method:'POST',body:authMode==='signup'?{email:e,password:p,name:n}:{email:e,password:p}});currentUser=d.user;await loadBooks();document.getElementById('user-name-display').textContent=currentUser.name||currentUser.email;showApp();renderHome();}catch(x){err.textContent=x.message;}finally{btn.disabled=false;btn.textContent=authMode==='login'?'Log In':'Sign Up';}}
 async function doLogout(){try{await api('logout',{method:'POST'});}catch(x){}currentUser=null;books=[];showAuth();}
 async function checkAuth(){try{const d=await api('me');currentUser=d.user;document.getElementById('user-name-display').textContent=currentUser.name||currentUser.email;await loadBooks();showApp();renderHome();}catch(x){showAuth();}}
 
@@ -783,6 +798,32 @@ function nativeShare(){const b=getBook(currentBookId);if(navigator.share)navigat
 function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):'';}
 function fmtDate(ts){const d=new Date(ts);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
 function shortDate(ts){return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+
+/* === VOICE INPUT === */
+let activeRecognition=null,activeMicBtn=null;
+function toggleMic(fieldId){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Voice input not supported in this browser');return;}
+  const btn=event.currentTarget;
+  // If already recording this field, stop
+  if(activeRecognition&&activeMicBtn===btn){activeRecognition.stop();return;}
+  // Stop any existing
+  if(activeRecognition){activeRecognition.stop();}
+  const recognition=new SR();
+  recognition.continuous=true;recognition.interimResults=true;recognition.lang='en-US';
+  const field=document.getElementById(fieldId);
+  const startText=field.value;
+  btn.classList.add('recording');activeMicBtn=btn;activeRecognition=recognition;
+  recognition.onresult=e=>{
+    let transcript='';
+    for(let i=0;i<e.results.length;i++){transcript+=e.results[i][0].transcript;}
+    field.value=startText+(startText?' ':'')+transcript;
+    field.dispatchEvent(new Event('input'));
+  };
+  recognition.onend=()=>{btn.classList.remove('recording');if(activeMicBtn===btn){activeRecognition=null;activeMicBtn=null;}};
+  recognition.onerror=()=>{btn.classList.remove('recording');activeRecognition=null;activeMicBtn=null;};
+  recognition.start();
+}
 
 /* === INIT === */
 document.addEventListener('click',e=>{if(!e.target.closest('.suggest-wrap'))document.getElementById('suggest-list').classList.remove('open');});
