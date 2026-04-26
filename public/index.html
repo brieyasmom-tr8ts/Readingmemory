@@ -227,6 +227,20 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .auth-bar{padding:8px 20px;background:var(--cream);border-bottom:1px solid var(--fog);font-size:.75rem;color:var(--sage);display:flex;align-items:center;justify-content:space-between}
 .auth-bar button{font-size:.75rem;color:var(--rose);font-weight:700}
 @supports(padding:max(0px)){.fab{bottom:max(28px,env(safe-area-inset-bottom) + 16px)}}
+
+/* Desktop responsive */
+@media(min-width:600px){
+  #app,.auth-screen{max-width:480px;margin:0 auto}
+  .topbar,.stats-strip,.filter-tabs,.search-sort-bar,.auth-bar{max-width:480px}
+  .fab{right:calc(50% - 216px)}
+  .modal-sheet{max-width:480px;margin:0 auto}
+}
+@media(min-width:900px){
+  #app,.auth-screen{max-width:600px}
+  .book-grid{grid-template-columns:repeat(3,1fr)}
+  .fab{right:calc(50% - 276px)}
+  .modal-sheet{max-width:600px}
+}
 </style>
 </head>
 <body>
@@ -440,7 +454,7 @@ async function checkAuth(){try{const d=await api('me');currentUser=d.user;docume
 
 /* === DATA === */
 async function loadBooks(){try{const d=await api('books');books=d.books||[];customSubs=d.customSubs||{};}catch(x){books=[];}}
-async function apiSaveBook(b){try{const exists=books.find(x=>x.id===b.id);if(exists){await api('books/'+b.id,{method:'PUT',body:b});}else{await api('books',{method:'POST',body:b});}}catch(x){console.warn('save failed',x);}}
+async function apiSaveBook(b){try{await api('books/'+b.id,{method:'PUT',body:b});}catch(x){try{await api('books',{method:'POST',body:b});}catch(x2){console.warn('save failed',x2);}}}
 async function apiDeleteBook(id){try{await api('books/'+id,{method:'DELETE'});}catch(x){}}
 async function apiSaveEntry(bid,e){try{await api('entries',{method:'POST',body:{bookId:bid,...e}});}catch(x){}}
 async function apiDeleteEntry(id){try{await api('entries?id='+id,{method:'DELETE'});}catch(x){}}

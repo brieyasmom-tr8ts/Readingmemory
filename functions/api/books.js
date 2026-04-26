@@ -64,7 +64,7 @@ export async function onRequestPost(context) {
   const now = Date.now();
 
   await env.DB.prepare(`
-    INSERT INTO books (id, user_id, title, author, cover, status, category, sub_category,
+    INSERT OR REPLACE INTO books (id, user_id, title, author, cover, status, category, sub_category,
       recommended_by, recommend, notes_about, notes_final, ai_summary, started_at, finished_at, created_at, rating, source)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
