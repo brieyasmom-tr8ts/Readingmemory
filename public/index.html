@@ -800,28 +800,48 @@ function fmtDate(ts){const d=new Date(ts);return d.toLocaleDateString('en-US',{m
 function shortDate(ts){return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 
 /* === VOICE INPUT === */
-let activeRecognition=null,activeMicBtn=null;
+let activeRecognition=null,activeMicBtn=null,activeMicField=null;
 function toggleMic(fieldId){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){toast('Voice input not supported in this browser');return;}
   const btn=event.currentTarget;
-  // If already recording this field, stop
   if(activeRecognition&&activeMicBtn===btn){activeRecognition.stop();return;}
-  // Stop any existing
   if(activeRecognition){activeRecognition.stop();}
   const recognition=new SR();
   recognition.continuous=true;recognition.interimResults=true;recognition.lang='en-US';
   const field=document.getElementById(fieldId);
   const startText=field.value;
-  btn.classList.add('recording');activeMicBtn=btn;activeRecognition=recognition;
+  let finalTranscript='';
+  btn.classList.add('recording');activeMicBtn=btn;activeRecognition=recognition;activeMicField=fieldId;
+  toast('Listening...');
   recognition.onresult=e=>{
-    let transcript='';
-    for(let i=0;i<e.results.length;i++){transcript+=e.results[i][0].transcript;}
-    field.value=startText+(startText?' ':'')+transcript;
-    field.dispatchEvent(new Event('input'));
+    let interim='';finalTranscript='';
+    for(let i=0;i<e.results.length;i++){
+      if(e.results[i].isFinal){finalTranscript+=e.results[i][0].transcript+' ';}
+      else{interim+=e.results[i][0].transcript;}
+    }
+    field.value=startText+(startText&&finalTranscript?' ':'')+finalTranscript+interim;
   };
-  recognition.onend=()=>{btn.classList.remove('recording');if(activeMicBtn===btn){activeRecognition=null;activeMicBtn=null;}};
-  recognition.onerror=()=>{btn.classList.remove('recording');activeRecognition=null;activeMicBtn=null;};
+  recognition.onend=async()=>{
+    btn.classList.remove('recording');
+    if(activeMicBtn===btn){activeRecognition=null;activeMicBtn=null;}
+    // AI cleanup on the new text
+    const newText=finalTranscript.trim();
+    if(newText){
+      btn.textContent='...';
+      try{
+        const d=await api('clean-text',{method:'POST',body:{text:newText}});
+        field.value=startText+(startText?' ':'')+d.text;
+        field.dispatchEvent(new Event('input'));
+        toast('Cleaned up!');
+      }catch(x){
+        field.value=startText+(startText?' ':'')+newText;
+        field.dispatchEvent(new Event('input'));
+      }
+      btn.textContent='\u{1F399}';
+    }
+  };
+  recognition.onerror=()=>{btn.classList.remove('recording');activeRecognition=null;activeMicBtn=null;toast('Voice input failed');};
   recognition.start();
 }
 
