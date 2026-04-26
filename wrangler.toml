@@ -1,0 +1,8 @@
+name = "reading-memory"
+compatibility_date = "2024-12-01"
+pages_build_output_dir = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "readingmemory"
+database_id = "cb9bca98-0625-4573-b8cf-fd3512decc9b"

@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#c8843a">
 <title>Reading Memory</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="apple-touch-icon" href="/icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-
-<!-- Firebase (enable cloud sync by setting FIREBASE_CONFIG below) -->
-<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
-
 <style>
 :root {
   --ink:#1a1410; --ink-soft:#3d3028; --sepia:#7c5c3e;
@@ -40,43 +40,38 @@ img{max-width:100%;display:block}
 .view.active{display:flex}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-/* Top bar */
 .topbar{position:sticky;top:0;z-index:100;background:var(--paper);border-bottom:1px solid var(--fog-md);padding:14px 20px;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px)}
 .topbar h1{font-family:var(--font-display);font-size:1.35rem;font-weight:600;color:var(--ink);flex:1}
 .topbar-sub{font-family:var(--font-display);font-size:1.1rem;font-weight:600;color:var(--ink);flex:1;font-style:italic}
 .btn-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--ink-soft);background:var(--fog);transition:background var(--transition),transform var(--transition);flex-shrink:0}
 .btn-icon:active{transform:scale(.92);background:var(--fog-md)}
 
-/* Buttons */
 .btn-primary{background:var(--ink);color:var(--cream);padding:13px 28px;border-radius:50px;font-weight:700;font-size:.95rem;letter-spacing:.04em;text-transform:uppercase;box-shadow:var(--shadow-md);transition:transform var(--transition),box-shadow var(--transition);display:inline-flex;align-items:center;gap:8px}
 .btn-primary:active{transform:scale(.96);box-shadow:var(--shadow-sm)}
 .btn-primary.amber{background:var(--amber);color:#fff}
 .btn-primary.sage{background:var(--sage);color:#fff}
 .btn-primary.rose{background:var(--rose);color:#fff}
+.btn-primary:disabled{opacity:.5;pointer-events:none}
 .btn-secondary{border:1.5px solid var(--fog-md);color:var(--ink-soft);padding:10px 22px;border-radius:50px;font-weight:400;font-size:.9rem;background:var(--paper);transition:background var(--transition);display:inline-flex;align-items:center;gap:6px}
 .btn-secondary:active{background:var(--cream-dk)}
 .btn-danger{background:var(--rose);color:#fff;padding:10px 22px;border-radius:50px;font-weight:700;font-size:.85rem;letter-spacing:.04em;text-transform:uppercase}
+.btn-link{color:var(--amber);font-weight:700;font-size:.9rem;text-decoration:underline}
 
-/* FAB */
 .fab{position:fixed;bottom:28px;right:24px;z-index:200;width:60px;height:60px;border-radius:50%;background:var(--ink);color:var(--cream);font-size:1.8rem;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-lg);transition:transform var(--transition)}
 .fab:active{transform:scale(.92) rotate(15deg)}
 
-/* Stats strip */
 .stats-strip{display:flex;gap:16px;padding:12px 20px;background:var(--cream);border-bottom:1px solid var(--fog)}
 .stat-chip{font-size:.82rem;color:var(--sepia);font-weight:400}
 .stat-chip strong{color:var(--ink);font-weight:700;font-size:1.1rem}
 
-/* Filter tabs */
 .filter-tabs{display:flex;gap:6px;padding:12px 20px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .filter-tab{padding:7px 16px;border-radius:50px;font-size:.82rem;font-weight:700;background:var(--cream);color:var(--sepia);white-space:nowrap;transition:all .18s;border:1.5px solid transparent}
 .filter-tab.active{background:var(--ink);color:var(--cream);border-color:var(--ink)}
 
-/* Search */
 .search-bar{padding:0 20px 8px}
 .search-input{width:100%;background:var(--cream);border:1.5px solid var(--cream-dk);border-radius:50px;padding:10px 18px;font-size:.92rem;color:var(--ink);outline:none;transition:border-color .18s}
 .search-input:focus{border-color:var(--amber);background:#fff}
 
-/* Book grid */
 .book-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:16px}
 .book-card{background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;transition:transform var(--transition);position:relative}
 .book-card:active{transform:scale(.97)}
@@ -93,19 +88,16 @@ img{max-width:100%;display:block}
 .book-card-author{font-size:.72rem;color:var(--sepia);margin-bottom:4px}
 .book-card-mood{font-size:1rem}
 
-/* Empty state */
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:60px 20px;text-align:center;color:var(--sepia)}
 .empty-state .icon{font-size:3.5rem;opacity:.5}
 .empty-state p{font-family:var(--font-display);font-style:italic;font-size:1.1rem;max-width:240px;line-height:1.6}
 
-/* Forms */
 .form-content{padding:24px 20px 100px;flex:1;display:flex;flex-direction:column;gap:20px}
 .field-group{display:flex;flex-direction:column;gap:6px}
 .field-label{font-size:.78rem;font-weight:700;color:var(--sepia);text-transform:uppercase;letter-spacing:.07em}
 .field-input{background:var(--cream);border:1.5px solid var(--cream-dk);border-radius:var(--radius-sm);padding:12px 14px;font-size:1rem;color:var(--ink);outline:none;transition:border-color .18s;width:100%}
 .field-input:focus{border-color:var(--amber);background:#fff}
 textarea.field-input{resize:none;min-height:72px;line-height:1.5}
-.field-hint{font-size:.75rem;color:var(--sepia);font-style:italic}
 .cover-picker{width:140px;height:200px;margin:0 auto;border-radius:var(--radius);border:2px dashed var(--amber);background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;overflow:hidden;position:relative;transition:background var(--transition)}
 .cover-picker:active{background:var(--cream-dk)}
 .cover-picker img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
@@ -113,14 +105,12 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .cover-picker .placeholder span{font-size:1.8rem}
 .cover-picker .placeholder p{font-size:.78rem;color:var(--sepia);text-align:center;line-height:1.4}
 
-/* Pills */
 .pill-row{display:flex;gap:8px;flex-wrap:wrap}
 .pill{padding:10px 16px;border-radius:50px;border:1.5px solid var(--fog-md);font-size:.82rem;font-weight:700;text-align:center;cursor:pointer;color:var(--ink-soft);background:var(--paper);transition:all .18s;white-space:nowrap}
 .pill.active{background:var(--ink);color:var(--cream);border-color:var(--ink)}
 .pill.sm{padding:7px 12px;font-size:.75rem}
 .pill-add{border-style:dashed;border-color:var(--amber);color:var(--amber)}
 
-/* Auto-suggest dropdown */
 .suggest-wrap{position:relative}
 .suggest-list{position:absolute;top:100%;left:0;right:0;z-index:50;background:#fff;border:1.5px solid var(--cream-dk);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);max-height:220px;overflow-y:auto;display:none;box-shadow:var(--shadow-md)}
 .suggest-list.open{display:block}
@@ -132,13 +122,10 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .suggest-item-title{font-size:.88rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .suggest-item-author{font-size:.75rem;color:var(--sepia)}
 
-/* Duplicate warning */
 .dup-warning{background:#fff3e0;border:1.5px solid var(--amber);border-radius:var(--radius-sm);padding:12px 16px;display:flex;flex-direction:column;gap:8px}
 .dup-warning p{font-size:.88rem;color:var(--ink-soft)}
 .dup-warning strong{color:var(--ink)}
-.dup-warning .dup-actions{display:flex;gap:8px}
 
-/* Detail hero */
 .hero{width:100%;background:var(--ink);padding:28px 20px 24px;display:flex;gap:18px;align-items:flex-end;position:relative}
 .hero-cover{width:100px;height:148px;border-radius:8px;overflow:hidden;box-shadow:var(--shadow-lg);flex-shrink:0;background:var(--ink-soft);display:flex;align-items:center;justify-content:center}
 .hero-cover img{width:100%;height:100%;object-fit:cover}
@@ -151,13 +138,11 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .hero-status-row .pill{font-size:.72rem;padding:6px 12px;color:rgba(255,255,255,.6);background:transparent;border-color:rgba(255,255,255,.2)}
 .hero-status-row .pill.active{background:var(--amber);color:#fff;border-color:var(--amber)}
 
-/* Sections */
 .detail-content{padding:0 0 100px;flex:1}
 .section{padding:20px 20px 16px;border-bottom:1px solid var(--fog)}
 .section-title{font-family:var(--font-display);font-size:1rem;font-weight:600;font-style:italic;color:var(--sepia);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .section-title::after{content:'';flex:1;height:1px;background:var(--fog-md)}
 
-/* Recommend / meta */
 .meta-row{display:flex;align-items:center;justify-content:space-between;background:var(--cream);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:8px}
 .meta-label{font-size:.88rem;color:var(--ink-soft)}
 .toggle-switch{position:relative;width:46px;height:26px}
@@ -168,7 +153,6 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .toggle-switch input:checked+.toggle-slider::before{transform:translateX(20px)}
 .rec-by{font-size:.82rem;color:var(--sepia);font-style:italic;padding:4px 16px}
 
-/* Journey timeline */
 .journey-list{display:flex;flex-direction:column;gap:10px}
 .entry-card{background:var(--cream);border-radius:var(--radius-sm);padding:12px 14px;display:flex;gap:12px;align-items:flex-start;position:relative}
 .entry-emoji{font-size:1.6rem;flex-shrink:0}
@@ -179,19 +163,15 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .entry-delete{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--rose);background:transparent;transition:background .18s}
 .entry-delete:active{background:rgba(176,96,90,.15)}
 
-/* Notes section */
 .notes-block{display:flex;flex-direction:column;gap:14px}
-
-/* Entry form */
 .position-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .emoji-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .emoji-btn{aspect-ratio:1;border-radius:var(--radius-sm);background:var(--cream);font-size:1.6rem;display:flex;align-items:center;justify-content:center;border:2px solid transparent;transition:transform var(--transition),border-color .18s}
 .emoji-btn:active{transform:scale(.92)}
 .emoji-btn.selected{border-color:var(--amber);background:#fffbe8}
 
-/* AI Summary */
 .ai-box{border-radius:var(--radius);overflow:hidden;border:1.5px solid var(--amber);margin-bottom:12px}
-.ai-box-header{background:var(--amber);color:#fff;padding:10px 16px;font-size:.82rem;font-weight:700;letter-spacing:.05em;display:flex;align-items:center;gap:6px}
+.ai-box-header{background:var(--amber);color:#fff;padding:10px 16px;font-size:.82rem;font-weight:700;letter-spacing:.05em}
 .ai-content{padding:14px 16px;background:#fffdf8}
 .ai-section-title{font-family:var(--font-display);font-size:.9rem;font-weight:600;color:var(--ink);margin:12px 0 4px}
 .ai-section-title:first-child{margin-top:0}
@@ -204,7 +184,6 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .ai-edit textarea{width:100%;background:var(--cream);border:1.5px solid var(--cream-dk);border-radius:var(--radius-sm);padding:10px 12px;font-size:.88rem;color:var(--ink);resize:none;outline:none;min-height:220px;line-height:1.6;transition:border-color .18s}
 .ai-edit textarea:focus{border-color:var(--amber)}
 
-/* Stats view */
 .stat-cards{display:flex;flex-direction:column;gap:12px;padding:20px}
 .stat-card{background:#fff;border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm)}
 .stat-card-label{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--sepia);margin-bottom:4px}
@@ -217,7 +196,6 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .cat-label{font-size:.82rem;color:var(--ink-soft);width:120px;flex-shrink:0}
 .cat-count{font-size:.82rem;font-weight:700;color:var(--ink);width:24px;text-align:right}
 
-/* Share modal */
 .modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(26,20,16,.65);backdrop-filter:blur(4px);align-items:flex-end}
 .modal-overlay.open{display:flex}
 .modal-sheet{background:var(--paper);width:100%;border-radius:var(--radius) var(--radius) 0 0;padding:24px 20px 40px;animation:slideUp .3s cubic-bezier(.34,1.1,.64,1)}
@@ -236,27 +214,51 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .share-btn:active{background:var(--cream-dk)}
 .share-btn .icon{font-size:1.3rem}
 
-/* Confirm modal */
 .confirm-overlay{display:none;position:fixed;inset:0;z-index:600;background:rgba(26,20,16,.65);align-items:center;justify-content:center}
 .confirm-overlay.open{display:flex}
 .confirm-box{background:var(--paper);border-radius:var(--radius);padding:24px;margin:20px;max-width:340px;width:100%;box-shadow:var(--shadow-lg)}
 .confirm-box p{font-size:.95rem;color:var(--ink);margin-bottom:16px;line-height:1.5}
 .confirm-actions{display:flex;gap:10px;justify-content:flex-end}
 
-/* Toast */
 #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--cream);padding:10px 20px;border-radius:50px;font-size:.88rem;opacity:0;transition:all .3s;z-index:900;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* Firebase sign-in */
-.signin-bar{padding:10px 20px;background:var(--cream);border-bottom:1px solid var(--fog);display:flex;align-items:center;justify-content:space-between;font-size:.82rem;color:var(--sepia)}
-.signin-bar button{font-size:.82rem;font-weight:700;color:var(--amber);text-decoration:underline}
-.signed-in-bar{padding:8px 20px;background:var(--cream);border-bottom:1px solid var(--fog);font-size:.75rem;color:var(--sage);text-align:center}
+/* Auth screen */
+.auth-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center}
+.auth-logo{font-size:4rem;margin-bottom:8px}
+.auth-title{font-family:var(--font-display);font-size:1.8rem;font-weight:700;color:var(--ink);margin-bottom:4px}
+.auth-sub{font-size:.92rem;color:var(--sepia);margin-bottom:32px}
+.auth-form{width:100%;max-width:320px;display:flex;flex-direction:column;gap:14px}
+.auth-form .field-input{text-align:center;border-radius:50px;padding:14px 20px}
+.auth-error{font-size:.82rem;color:var(--rose);min-height:20px}
+.auth-switch{margin-top:16px;font-size:.88rem;color:var(--sepia)}
+.auth-bar{padding:8px 20px;background:var(--cream);border-bottom:1px solid var(--fog);font-size:.75rem;color:var(--sage);display:flex;align-items:center;justify-content:space-between}
+.auth-bar button{font-size:.75rem;color:var(--rose);font-weight:700}
 
 @supports(padding:max(0px)){.fab{bottom:max(28px,env(safe-area-inset-bottom) + 16px)}}
 </style>
 </head>
 <body>
-<div id="app">
+
+<!-- ==================== AUTH SCREEN ==================== -->
+<div id="auth-screen" class="auth-screen" style="display:none">
+  <div class="auth-logo"><img src="/icon.svg" alt="" width="80" height="80"></div>
+  <div class="auth-title">Reading Memory</div>
+  <div class="auth-sub">Remember every book and how it made you feel</div>
+  <div class="auth-form" id="auth-form">
+    <input type="text" class="field-input" id="auth-name" placeholder="Your name" style="display:none">
+    <input type="email" class="field-input" id="auth-email" placeholder="Email">
+    <input type="password" class="field-input" id="auth-pass" placeholder="Password">
+    <div class="auth-error" id="auth-error"></div>
+    <button class="btn-primary" id="auth-btn" onclick="doAuth()" style="align-self:center">Log In</button>
+    <div class="auth-switch">
+      <span id="auth-switch-text">No account?</span>
+      <button class="btn-link" id="auth-switch-btn" onclick="toggleAuthMode()">Sign Up</button>
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
 
   <!-- ==================== HOME ==================== -->
   <div id="view-home" class="view active">
@@ -264,12 +266,15 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
       <h1>Reading Memory</h1>
       <button class="btn-icon" onclick="showView('stats')" title="Stats">&#x1f4ca;</button>
     </div>
-    <div id="auth-bar"></div>
+    <div class="auth-bar" id="user-bar">
+      <span id="user-name-display"></span>
+      <button onclick="doLogout()">Log out</button>
+    </div>
     <div class="stats-strip" id="home-stats"></div>
     <div class="search-bar">
       <input type="text" class="search-input" id="home-search" placeholder="Search your books..." oninput="renderHome()">
     </div>
-    <div class="filter-tabs" id="home-filters">
+    <div class="filter-tabs">
       <button class="filter-tab active" data-f="all" onclick="setFilter(this)">All</button>
       <button class="filter-tab" data-f="reading" onclick="setFilter(this)">Reading</button>
       <button class="filter-tab" data-f="finished" onclick="setFilter(this)">Finished</button>
@@ -292,15 +297,13 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
       <span class="topbar-sub">New Book</span>
     </div>
     <div class="form-content">
-      <div class="cover-picker" id="cover-picker" onclick="document.getElementById('cover-input').click()">
+      <div class="cover-picker" onclick="document.getElementById('cover-input').click()">
         <div class="placeholder" id="cover-placeholder">
-          <span>&#x1f4f7;</span>
-          <p>Tap to add<br>cover photo</p>
+          <span>&#x1f4f7;</span><p>Tap to add<br>cover photo</p>
         </div>
         <img id="cover-preview" src="" alt="" style="display:none">
       </div>
       <input type="file" id="cover-input" accept="image/*" capture="environment" style="display:none" onchange="handleCoverInput(event)">
-
       <div class="field-group suggest-wrap">
         <label class="field-label">Title</label>
         <input type="text" class="field-input" id="add-title" placeholder="Start typing a book title..." oninput="onTitleInput()" autocomplete="off">
@@ -357,7 +360,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
       </div>
     </div>
     <div class="detail-content">
-      <div class="section" id="detail-meta-section">
+      <div class="section">
         <div class="meta-row">
           <span class="meta-label">I'd recommend this</span>
           <label class="toggle-switch"><input type="checkbox" id="detail-recommend" onchange="saveRecommend()"><span class="toggle-slider"></span></label>
@@ -366,9 +369,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
       </div>
       <div class="section">
         <div class="section-title">Reading Journey</div>
-        <div class="journey-list" id="journey-list">
-          <p style="color:var(--sepia);font-size:.88rem;font-style:italic">No entries yet. How's the book going?</p>
-        </div>
+        <div class="journey-list" id="journey-list"></div>
         <button class="btn-secondary" onclick="showView('entry')" style="margin-top:14px">&#xff0b; Quick Entry</button>
       </div>
       <div class="section">
@@ -404,7 +405,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
     <div class="form-content">
       <div class="field-group">
         <label class="field-label">Where are you in the book?</label>
-        <div class="position-grid" id="position-grid">
+        <div class="position-grid">
           <button class="pill" data-pos="beginning" onclick="pickPos(this)">Beginning</button>
           <button class="pill" data-pos="middle" onclick="pickPos(this)">Middle</button>
           <button class="pill" data-pos="end" onclick="pickPos(this)">End</button>
@@ -448,7 +449,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 <div class="modal-overlay" id="share-modal" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="share-preview" id="share-preview">
+    <div class="share-preview">
       <div class="share-cover" id="share-cover"><span style="font-size:2rem">&#x1f4d6;</span></div>
       <div class="share-text">
         <div class="share-title" id="share-title">-</div>
@@ -464,13 +465,12 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
   </div>
 </div>
 
-<!-- Confirm modal -->
 <div class="confirm-overlay" id="confirm-modal">
   <div class="confirm-box">
     <p id="confirm-msg"></p>
     <div class="confirm-actions">
       <button class="btn-secondary" onclick="closeConfirm()">Cancel</button>
-      <button class="btn-danger" id="confirm-btn" onclick="">Confirm</button>
+      <button class="btn-danger" id="confirm-btn">Confirm</button>
     </div>
   </div>
 </div>
@@ -478,22 +478,6 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 <div id="toast"></div>
 
 <script>
-/* ==============================================================
-   CONFIG — Set your Firebase config here for cloud sync.
-   Leave as null to use local storage only.
-   ============================================================== */
-const FIREBASE_CONFIG = null;
-/*  Example:
-const FIREBASE_CONFIG = {
-  apiKey: "...",
-  authDomain: "...",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "..."
-};
-*/
-
 /* ==============================================================
    CATEGORIES
    ============================================================== */
@@ -507,7 +491,7 @@ const CATEGORIES = {
    STATE
    ============================================================== */
 let books = [];
-let customSubs = {}; // { novels: ['Dystopian'], ... }
+let customSubs = {};
 let currentBookId = null;
 let currentFilter = 'all';
 let tempCoverURL = null;
@@ -517,76 +501,123 @@ let addCatSub = null;
 let entryPos = null;
 let entryEmoji = null;
 let suggestTimer = null;
-let fbUser = null;
-let fbDb = null;
+let authMode = 'login'; // 'login' or 'signup'
+let currentUser = null;
+let noteTimer = null;
 
 /* ==============================================================
-   DB LAYER
+   API LAYER
    ============================================================== */
-function loadLocal() {
-  books = JSON.parse(localStorage.getItem('rm_books') || '[]');
-  customSubs = JSON.parse(localStorage.getItem('rm_custom_subs') || '{}');
-}
-function saveLocal() {
-  localStorage.setItem('rm_books', JSON.stringify(books));
-  localStorage.setItem('rm_custom_subs', JSON.stringify(customSubs));
-}
-
-async function loadFromFirestore() {
-  if (!fbDb || !fbUser) return;
-  const snap = await fbDb.collection('users').doc(fbUser.uid).collection('books').get();
-  books = [];
-  snap.forEach(doc => books.push({ id: doc.id, ...doc.data() }));
-  const metaDoc = await fbDb.collection('users').doc(fbUser.uid).get();
-  if (metaDoc.exists && metaDoc.data().customSubs) customSubs = metaDoc.data().customSubs;
-  saveLocal(); // cache locally too
-}
-async function saveToFirestore(book) {
-  if (!fbDb || !fbUser) return;
-  await fbDb.collection('users').doc(fbUser.uid).collection('books').doc(book.id).set(book);
-  await fbDb.collection('users').doc(fbUser.uid).set({ customSubs }, { merge: true });
-}
-async function deleteFromFirestore(bookId) {
-  if (!fbDb || !fbUser) return;
-  await fbDb.collection('users').doc(fbUser.uid).collection('books').doc(bookId).delete();
-}
-
-function persist(book) {
-  saveLocal();
-  if (book) saveToFirestore(book).catch(e => console.warn('Firestore save failed', e));
-}
-function persistDelete(bookId) {
-  saveLocal();
-  deleteFromFirestore(bookId).catch(e => console.warn('Firestore delete failed', e));
-}
-
-/* ==============================================================
-   FIREBASE AUTH
-   ============================================================== */
-async function initFirebase() {
-  if (!FIREBASE_CONFIG) {
-    document.getElementById('auth-bar').innerHTML = '<div class="signin-bar"><span>Local storage only</span><span style="font-size:.75rem">Set up Firebase for cloud sync</span></div>';
-    return;
-  }
-  firebase.initializeApp(FIREBASE_CONFIG);
-  fbDb = firebase.firestore();
-  const auth = firebase.auth();
-
-  auth.onAuthStateChanged(async user => {
-    if (user) {
-      fbUser = user;
-      document.getElementById('auth-bar').innerHTML = `<div class="signed-in-bar">Synced as ${esc(user.displayName || user.email || 'Anonymous')}</div>`;
-      await loadFromFirestore();
-      renderHome();
-    } else {
-      document.getElementById('auth-bar').innerHTML = '<div class="signin-bar"><span>Sign in to sync across devices</span><button onclick="signIn()">Sign in with Google</button></div>';
-    }
+async function api(path, opts = {}) {
+  const resp = await fetch('/api/' + path, {
+    method: opts.method || 'GET',
+    headers: opts.body ? { 'Content-Type': 'application/json' } : {},
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    credentials: 'same-origin'
   });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || 'Request failed');
+  return data;
 }
-async function signIn() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  try { await firebase.auth().signInWithPopup(provider); }
-  catch(e) { toast('Sign-in failed'); console.error(e); }
+
+/* ==============================================================
+   AUTH
+   ============================================================== */
+function showAuth() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('auth-name').style.display = authMode === 'signup' ? '' : 'none';
+  document.getElementById('auth-btn').textContent = authMode === 'login' ? 'Log In' : 'Sign Up';
+  document.getElementById('auth-switch-text').textContent = authMode === 'login' ? 'No account?' : 'Already have one?';
+  document.getElementById('auth-switch-btn').textContent = authMode === 'login' ? 'Sign Up' : 'Log In';
+  document.getElementById('auth-error').textContent = '';
+}
+async function doAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-pass').value;
+  const name = document.getElementById('auth-name').value.trim();
+  const errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Email and password required'; return; }
+  try {
+    const endpoint = authMode === 'login' ? 'login' : 'signup';
+    const body = authMode === 'signup' ? { email, password, name } : { email, password };
+    const data = await api(endpoint, { method: 'POST', body });
+    currentUser = data.user;
+    await loadBooks();
+    document.getElementById('user-name-display').textContent = currentUser.name || currentUser.email;
+    showApp();
+    renderHome();
+  } catch (e) {
+    errEl.textContent = e.message;
+  }
+}
+async function doLogout() {
+  try { await api('logout', { method: 'POST' }); } catch(e) {}
+  currentUser = null;
+  books = [];
+  showAuth();
+}
+async function checkAuth() {
+  try {
+    const data = await api('me');
+    currentUser = data.user;
+    document.getElementById('user-name-display').textContent = currentUser.name || currentUser.email;
+    await loadBooks();
+    showApp();
+    renderHome();
+  } catch (e) {
+    showAuth();
+  }
+}
+
+/* ==============================================================
+   DATA LOADING
+   ============================================================== */
+async function loadBooks() {
+  try {
+    const data = await api('books');
+    books = data.books || [];
+    customSubs = data.customSubs || {};
+  } catch (e) {
+    console.warn('Failed to load books', e);
+    books = [];
+  }
+}
+
+async function apiSaveBook(book) {
+  // Send to API (create or update)
+  try {
+    const existing = await api('books').then(d => (d.books||[]).find(b => b.id === book.id));
+    if (existing) {
+      await api('books/' + book.id, { method: 'PUT', body: book });
+    } else {
+      await api('books', { method: 'POST', body: book });
+    }
+  } catch (e) {
+    console.warn('API save failed', e);
+  }
+}
+
+async function apiDeleteBook(bookId) {
+  try { await api('books/' + bookId, { method: 'DELETE' }); } catch(e) { console.warn('API delete failed',e); }
+}
+
+async function apiSaveEntry(bookId, entry) {
+  try {
+    await api('entries', { method: 'POST', body: { bookId, ...entry } });
+  } catch(e) { console.warn('API entry save failed', e); }
+}
+
+async function apiDeleteEntry(entryId) {
+  try { await api('entries?id=' + entryId, { method: 'DELETE' }); } catch(e) { console.warn('API entry delete failed', e); }
 }
 
 /* ==============================================================
@@ -601,9 +632,6 @@ function showView(name) {
   window.scrollTo(0, 0);
 }
 
-/* ==============================================================
-   TOAST
-   ============================================================== */
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -611,18 +639,13 @@ function toast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-/* ==============================================================
-   CONFIRM MODAL
-   ============================================================== */
 function showConfirm(msg, onConfirm) {
   document.getElementById('confirm-msg').textContent = msg;
   const btn = document.getElementById('confirm-btn');
   btn.onclick = () => { closeConfirm(); onConfirm(); };
   document.getElementById('confirm-modal').classList.add('open');
 }
-function closeConfirm() {
-  document.getElementById('confirm-modal').classList.remove('open');
-}
+function closeConfirm() { document.getElementById('confirm-modal').classList.remove('open'); }
 
 /* ==============================================================
    HOME
@@ -634,18 +657,16 @@ function renderHome() {
     if (query && !b.title.toLowerCase().includes(query) && !(b.author||'').toLowerCase().includes(query)) return false;
     return true;
   });
-  // Sort: reading first, then by most recently created
   filtered.sort((a,b) => {
     const order = {reading:0, want:1, finished:2};
     if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
     return (b.createdAt||0) - (a.createdAt||0);
   });
 
-  // Stats strip
   const now = new Date();
-  const thisYear = books.filter(b => b.status === 'finished' && b.finishedAt && new Date(b.finishedAt).getFullYear() === now.getFullYear()).length;
-  const thisMonth = books.filter(b => b.status === 'finished' && b.finishedAt && new Date(b.finishedAt).getFullYear() === now.getFullYear() && new Date(b.finishedAt).getMonth() === now.getMonth()).length;
-  const reading = books.filter(b => b.status === 'reading').length;
+  const thisYear = books.filter(b => b.status==='finished' && b.finishedAt && new Date(b.finishedAt).getFullYear()===now.getFullYear()).length;
+  const thisMonth = books.filter(b => b.status==='finished' && b.finishedAt && new Date(b.finishedAt).getFullYear()===now.getFullYear() && new Date(b.finishedAt).getMonth()===now.getMonth()).length;
+  const reading = books.filter(b => b.status==='reading').length;
   document.getElementById('home-stats').innerHTML = `
     <div class="stat-chip"><strong>${thisYear}</strong> this year</div>
     <div class="stat-chip"><strong>${thisMonth}</strong> this month</div>
@@ -656,30 +677,26 @@ function renderHome() {
   grid.innerHTML = '';
   if (filtered.length === 0) {
     empty.style.display = 'flex'; grid.style.display = 'none';
-    if (books.length > 0) empty.querySelector('p').textContent = 'No books match your search.';
-    else empty.querySelector('p').textContent = 'Your reading journey starts here. Add your first book.';
+    empty.querySelector('p').textContent = books.length > 0 ? 'No books match your search.' : 'Your reading journey starts here. Add your first book.';
     return;
   }
   empty.style.display = 'none'; grid.style.display = 'grid';
-
   filtered.forEach(book => {
-    const lastMood = book.entries && book.entries.length ? book.entries[book.entries.length-1].emoji : '';
-    const badgeClass = {want:'badge-want',reading:'badge-reading',finished:'badge-finished'}[book.status];
+    const lastMood = book.entries?.length ? book.entries[book.entries.length-1].emoji : '';
+    const badge = {want:'badge-want',reading:'badge-reading',finished:'badge-finished'}[book.status];
     const cat = book.category && CATEGORIES[book.category] ? CATEGORIES[book.category].label : '';
     const card = document.createElement('div');
     card.className = 'book-card';
     card.onclick = () => { currentBookId = book.id; showView('detail'); };
-    card.innerHTML = `
-      <div class="book-card-cover">
-        ${book.cover ? `<img src="${esc(book.cover)}" alt="">` : '<span class="no-cover">&#x1f4d6;</span>'}
-        <span class="book-card-badge ${badgeClass}">${statusLabel(book.status)}</span>
-        ${cat ? `<span class="book-card-cat">${esc(cat)}</span>` : ''}
-      </div>
-      <div class="book-card-info">
-        <div class="book-card-title">${esc(book.title)||'Untitled'}</div>
-        <div class="book-card-author">${esc(book.author)||''}</div>
-        ${lastMood ? `<div class="book-card-mood">${lastMood}</div>` : ''}
-      </div>`;
+    card.innerHTML = `<div class="book-card-cover">
+      ${book.cover?`<img src="${esc(book.cover)}" alt="">`:'<span class="no-cover">&#x1f4d6;</span>'}
+      <span class="book-card-badge ${badge}">${statusLabel(book.status)}</span>
+      ${cat?`<span class="book-card-cat">${esc(cat)}</span>`:''}
+    </div><div class="book-card-info">
+      <div class="book-card-title">${esc(book.title)||'Untitled'}</div>
+      <div class="book-card-author">${esc(book.author)||''}</div>
+      ${lastMood?`<div class="book-card-mood">${lastMood}</div>`:''}
+    </div>`;
     grid.appendChild(card);
   });
 }
@@ -691,15 +708,12 @@ function setFilter(btn) {
   renderHome();
 }
 
-function statusLabel(s) {
-  return {want:'Want to Read',reading:'Reading',finished:'Finished'}[s]||s;
-}
+function statusLabel(s) { return {want:'Want to Read',reading:'Reading',finished:'Finished'}[s]||s; }
 
 /* ==============================================================
    ADD BOOK
    ============================================================== */
 function openAddView() {
-  // Reset form
   document.getElementById('add-title').value = '';
   document.getElementById('add-author').value = '';
   document.getElementById('add-recby').value = '';
@@ -719,8 +733,8 @@ function handleCoverInput(e) {
   const reader = new FileReader();
   reader.onload = ev => {
     tempCoverURL = ev.target.result;
-    const img = document.getElementById('cover-preview');
-    img.src = tempCoverURL; img.style.display = 'block';
+    document.getElementById('cover-preview').src = tempCoverURL;
+    document.getElementById('cover-preview').style.display = 'block';
     document.getElementById('cover-placeholder').style.display = 'none';
   };
   reader.readAsDataURL(file);
@@ -733,7 +747,6 @@ function pickAddStatus(btn) {
   document.getElementById('recby-group').style.display = addStatus === 'want' ? '' : 'none';
 }
 
-// --- Categories ---
 function renderCatPicker() {
   const row = document.getElementById('cat-main-row');
   row.innerHTML = '';
@@ -741,7 +754,7 @@ function renderCatPicker() {
     const btn = document.createElement('button');
     btn.className = 'pill' + (addCatMain === key ? ' active' : '');
     btn.textContent = cat.label;
-    btn.onclick = () => { addCatMain = key; addCatSub = null; renderCatPicker(); renderSubCatPicker(); };
+    btn.onclick = () => { addCatMain = key; addCatSub = null; renderCatPicker(); };
     row.appendChild(btn);
   });
   renderSubCatPicker();
@@ -752,24 +765,21 @@ function renderSubCatPicker() {
   if (!addCatMain) { group.style.display = 'none'; return; }
   group.style.display = '';
   row.innerHTML = '';
-  const allSubs = [...CATEGORIES[addCatMain].subs, ...(customSubs[addCatMain]||[])];
-  allSubs.forEach(sub => {
+  [...CATEGORIES[addCatMain].subs, ...(customSubs[addCatMain]||[])].forEach(sub => {
     const btn = document.createElement('button');
     btn.className = 'pill sm' + (addCatSub === sub ? ' active' : '');
     btn.textContent = sub;
     btn.onclick = () => { addCatSub = sub; renderSubCatPicker(); };
     row.appendChild(btn);
   });
-  // Add custom
   const addBtn = document.createElement('button');
   addBtn.className = 'pill sm pill-add';
   addBtn.textContent = '+ Add';
   addBtn.onclick = () => {
     const name = prompt('New sub-category:');
-    if (name && name.trim()) {
+    if (name?.trim()) {
       if (!customSubs[addCatMain]) customSubs[addCatMain] = [];
       if (!customSubs[addCatMain].includes(name.trim())) customSubs[addCatMain].push(name.trim());
-      saveLocal();
       addCatSub = name.trim();
       renderSubCatPicker();
     }
@@ -777,7 +787,6 @@ function renderSubCatPicker() {
   row.appendChild(addBtn);
 }
 
-// --- Auto-suggest from Open Library ---
 function onTitleInput() {
   clearTimeout(suggestTimer);
   const q = document.getElementById('add-title').value.trim();
@@ -791,12 +800,12 @@ async function fetchSuggestions(q) {
     const resp = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5&fields=title,author_name,cover_i,key`);
     const data = await resp.json();
     const list = document.getElementById('suggest-list');
-    if (!data.docs || !data.docs.length) { list.classList.remove('open'); return; }
+    if (!data.docs?.length) { list.classList.remove('open'); return; }
     list.innerHTML = data.docs.map(d => {
       const author = (d.author_name||[])[0]||'';
       const coverSrc = d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-S.jpg` : '';
-      return `<div class="suggest-item" onclick="pickSuggestion('${esc(d.title.replace(/'/g,"\\'"))}','${esc(author.replace(/'/g,"\\'"))}',${d.cover_i||0})">
-        <div class="suggest-item-cover">${coverSrc ? `<img src="${coverSrc}" alt="">` : ''}</div>
+      return `<div class="suggest-item" onclick="pickSuggestion(this)" data-title="${esc(d.title)}" data-author="${esc(author)}" data-cover="${d.cover_i||0}">
+        <div class="suggest-item-cover">${coverSrc?`<img src="${coverSrc}" alt="">`:''}</div>
         <div class="suggest-item-text">
           <div class="suggest-item-title">${esc(d.title)}</div>
           <div class="suggest-item-author">${esc(author)}</div>
@@ -804,68 +813,63 @@ async function fetchSuggestions(q) {
       </div>`;
     }).join('');
     list.classList.add('open');
-  } catch(e) { console.warn('Suggest failed', e); }
+  } catch(e) { console.warn('Suggest failed',e); }
 }
 
-function pickSuggestion(title, author, coverId) {
+function pickSuggestion(el) {
+  const title = el.dataset.title;
+  const author = el.dataset.author;
+  const coverId = parseInt(el.dataset.cover);
   document.getElementById('add-title').value = title;
   document.getElementById('add-author').value = author;
   document.getElementById('suggest-list').classList.remove('open');
-  // Set cover from Open Library if no user upload
   if (coverId && !tempCoverURL) {
-    const url = `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
-    tempCoverURL = url;
-    const img = document.getElementById('cover-preview');
-    img.src = url; img.style.display = 'block';
+    tempCoverURL = `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
+    document.getElementById('cover-preview').src = tempCoverURL;
+    document.getElementById('cover-preview').style.display = 'block';
     document.getElementById('cover-placeholder').style.display = 'none';
   }
   checkDuplicate(title);
 }
 
-// --- Duplicate detection ---
 function checkDuplicate(title) {
   const area = document.getElementById('dup-area');
   if (!title || title.length < 3) { area.innerHTML = ''; return; }
   const match = books.find(b => b.title.toLowerCase() === title.toLowerCase());
   if (match) {
-    const when = match.finishedAt ? new Date(match.finishedAt).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : (match.createdAt ? new Date(match.createdAt).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '');
+    const when = match.finishedAt ? new Date(match.finishedAt).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '';
     area.innerHTML = `<div class="dup-warning" style="margin-top:8px">
-      <p><strong>You've already got this book!</strong> "${esc(match.title)}" ${when ? '('+when+')' : ''} - Status: ${statusLabel(match.status)}</p>
-      <div class="dup-actions">
-        <button class="btn-secondary" onclick="currentBookId='${match.id}';showView('detail')">View It</button>
-      </div>
+      <p><strong>You've already got this book!</strong> "${esc(match.title)}" ${when?'('+when+')':''} - ${statusLabel(match.status)}</p>
+      <button class="btn-secondary" onclick="currentBookId='${match.id}';showView('detail')">View It</button>
     </div>`;
-  } else {
-    area.innerHTML = '';
-  }
+  } else { area.innerHTML = ''; }
 }
 
-// --- Save ---
-function saveBook() {
+async function saveBook() {
   const title = document.getElementById('add-title').value.trim();
   const author = document.getElementById('add-author').value.trim();
   if (!title) { toast('Please enter a title'); return; }
+  const now = Date.now();
   const book = {
-    id: Date.now().toString(),
-    title, author,
+    id: now.toString(), title, author,
     cover: tempCoverURL || null,
     status: addStatus,
     category: addCatMain || null,
     subCategory: addCatSub || null,
     recommendedBy: addStatus === 'want' ? document.getElementById('add-recby').value.trim() : '',
-    recommend: false,
-    entries: [],
+    recommend: false, entries: [],
     notes: { about:'', final:'' },
     aiSummary: null,
-    startedAt: addStatus === 'reading' ? Date.now() : null,
-    finishedAt: addStatus === 'finished' ? Date.now() : null,
-    createdAt: Date.now()
+    startedAt: addStatus === 'reading' ? now : null,
+    finishedAt: addStatus === 'finished' ? now : null,
+    createdAt: now
   };
   books.unshift(book);
-  persist(book);
+  renderHome();
   currentBookId = book.id;
   toast('Book added!');
   showView('detail');
+  await apiSaveBook(book);
 }
 
 /* ==============================================================
@@ -875,46 +879,26 @@ function getBook(id) { return books.find(b => b.id === id); }
 
 function renderDetail() {
   const book = getBook(currentBookId); if (!book) return;
-
   document.getElementById('detail-title').textContent = book.title || 'Untitled';
   document.getElementById('detail-author').textContent = book.author || '';
-
-  // Category
   const catLabel = book.category && CATEGORIES[book.category] ? CATEGORIES[book.category].label : '';
-  const subLabel = book.subCategory || '';
-  document.getElementById('detail-cat').textContent = catLabel + (subLabel ? ' / ' + subLabel : '');
-
-  // Cover
-  const coverEl = document.getElementById('detail-cover');
-  coverEl.innerHTML = book.cover ? `<img src="${esc(book.cover)}" alt="">` : '<span class="no-cover">&#x1f4d6;</span>';
-
-  // Status pills
-  document.querySelectorAll('#detail-status-row .pill').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.status === book.status);
-  });
-
-  // Recommend
+  document.getElementById('detail-cat').textContent = catLabel + (book.subCategory ? ' / ' + book.subCategory : '');
+  document.getElementById('detail-cover').innerHTML = book.cover ? `<img src="${esc(book.cover)}" alt="">` : '<span class="no-cover">&#x1f4d6;</span>';
+  document.querySelectorAll('#detail-status-row .pill').forEach(btn => btn.classList.toggle('active', btn.dataset.status === book.status));
   document.getElementById('detail-recommend').checked = !!book.recommend;
   document.getElementById('detail-recby').textContent = book.recommendedBy ? 'Recommended by ' + book.recommendedBy : '';
-
-  // Journey
   renderJourney(book);
-
-  // Notes
   document.getElementById('note-about').value = book.notes?.about || '';
   document.getElementById('note-final').value = book.notes?.final || '';
   document.getElementById('final-thoughts-group').style.display = book.status === 'finished' ? '' : 'none';
-
-  // AI section
-  const aiSec = document.getElementById('ai-section');
-  aiSec.style.display = book.status === 'finished' ? '' : 'none';
+  document.getElementById('ai-section').style.display = book.status === 'finished' ? '' : 'none';
   if (book.status === 'finished') renderAI(book);
 }
 
 function renderJourney(book) {
   const list = document.getElementById('journey-list');
-  if (!book.entries || !book.entries.length) {
-    list.innerHTML = '<p style="color:var(--sepia);font-size:.88rem;font-style:italic">No entries yet. How\'s the book going?</p>';
+  if (!book.entries?.length) {
+    list.innerHTML = '<p style="color:var(--sepia);font-size:.88rem;font-style:italic">No entries yet.</p>';
     return;
   }
   list.innerHTML = [...book.entries].reverse().map(e => `
@@ -922,48 +906,45 @@ function renderJourney(book) {
       <div class="entry-emoji">${e.emoji}</div>
       <div class="entry-body">
         <div class="entry-position">${esc(e.position)}</div>
-        ${e.note ? `<div class="entry-note">${esc(e.note)}</div>` : ''}
+        ${e.note?`<div class="entry-note">${esc(e.note)}</div>`:''}
         <div class="entry-time">${fmtDate(e.ts)}</div>
       </div>
       <button class="entry-delete" onclick="deleteEntry('${e.id}')" title="Delete">&#x2715;</button>
     </div>`).join('');
 }
 
-function updateStatus(btn) {
+async function updateStatus(btn) {
   const book = getBook(currentBookId); if (!book) return;
-  const prev = book.status;
   book.status = btn.dataset.status;
   if (book.status === 'reading' && !book.startedAt) book.startedAt = Date.now();
   if (book.status === 'finished' && !book.finishedAt) book.finishedAt = Date.now();
   if (book.status !== 'finished') book.finishedAt = null;
-  persist(book);
   renderDetail();
   toast('Status updated');
+  await apiSaveBook(book);
 }
 
-function saveRecommend() {
+async function saveRecommend() {
   const book = getBook(currentBookId); if (!book) return;
   book.recommend = document.getElementById('detail-recommend').checked;
-  persist(book);
+  await apiSaveBook(book);
 }
 
 function saveNotes() {
   const book = getBook(currentBookId); if (!book) return;
-  book.notes = {
-    about: document.getElementById('note-about').value,
-    final: document.getElementById('note-final').value
-  };
-  persist(book);
+  book.notes = { about: document.getElementById('note-about').value, final: document.getElementById('note-final').value };
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => apiSaveBook(book), 1000); // debounce saves
 }
 
-function confirmDeleteBook() {
+async function confirmDeleteBook() {
   const book = getBook(currentBookId); if (!book) return;
-  showConfirm(`Delete "${book.title}" and all its entries?`, () => {
+  showConfirm(`Delete "${book.title}" and all its entries?`, async () => {
     books = books.filter(b => b.id !== currentBookId);
-    persistDelete(currentBookId);
-    currentBookId = null;
     toast('Book deleted');
     showView('home');
+    await apiDeleteBook(currentBookId);
+    currentBookId = null;
   });
 }
 
@@ -971,7 +952,7 @@ function confirmDeleteBook() {
    JOURNAL ENTRIES
    ============================================================== */
 function pickPos(btn) {
-  document.querySelectorAll('#position-grid .pill').forEach(b => b.classList.remove('active'));
+  btn.parentElement.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   entryPos = btn.dataset.pos;
 }
@@ -981,34 +962,29 @@ function pickEmoji(btn) {
   entryEmoji = btn.dataset.emoji;
 }
 
-function saveEntry() {
+async function saveEntry() {
   if (!entryPos) { toast('Pick where you are'); return; }
   if (!entryEmoji) { toast('Pick a mood'); return; }
   const book = getBook(currentBookId); if (!book) return;
-  book.entries.push({
-    id: Date.now().toString(),
-    position: entryPos,
-    emoji: entryEmoji,
-    note: document.getElementById('entry-note').value.trim(),
-    ts: Date.now()
-  });
-  persist(book);
-  // Reset form
+  const entry = { id: Date.now().toString(), position: entryPos, emoji: entryEmoji, note: document.getElementById('entry-note').value.trim(), ts: Date.now() };
+  book.entries.push(entry);
+  // Reset
   entryPos = null; entryEmoji = null;
-  document.querySelectorAll('#position-grid .pill').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.position-grid .pill').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('#emoji-grid .emoji-btn').forEach(b => b.classList.remove('selected'));
   document.getElementById('entry-note').value = '';
   toast('Entry saved!');
   showView('detail');
+  await apiSaveEntry(book.id, entry);
 }
 
-function deleteEntry(entryId) {
+async function deleteEntry(entryId) {
   const book = getBook(currentBookId); if (!book) return;
-  showConfirm('Delete this entry?', () => {
+  showConfirm('Delete this entry?', async () => {
     book.entries = book.entries.filter(e => e.id !== entryId);
-    persist(book);
     renderJourney(book);
     toast('Entry deleted');
+    await apiDeleteEntry(entryId);
   });
 }
 
@@ -1021,102 +997,52 @@ function renderAI(book) {
   const btnRegen = document.getElementById('btn-ai-regen');
   if (book.aiSummary) {
     btnGen.style.display = 'none'; btnRegen.style.display = 'inline-flex';
-    area.innerHTML = `<div class="ai-box">
-      <div class="ai-box-header">Your Reading Summary</div>
-      <div class="ai-content">${renderAIHTML(book.aiSummary)}</div>
-    </div>
-    <button class="btn-secondary" onclick="editAI()" style="margin-top:8px">Edit Summary</button>`;
-  } else {
-    btnGen.style.display = 'inline-flex'; btnRegen.style.display = 'none';
-    area.innerHTML = '';
-  }
+    area.innerHTML = `<div class="ai-box"><div class="ai-box-header">Your Reading Summary</div><div class="ai-content">${renderAIHTML(book.aiSummary)}</div></div>
+      <button class="btn-secondary" onclick="editAI()" style="margin-top:8px">Edit Summary</button>`;
+  } else { btnGen.style.display = 'inline-flex'; btnRegen.style.display = 'none'; area.innerHTML = ''; }
 }
 function renderAIHTML(text) {
   return text.split(/\n(?=## )/).map(s => {
     const lines = s.trim().split('\n');
     const heading = lines[0].replace(/^#+\s*/, '');
     const body = lines.slice(1).join('\n').trim();
-    const bodyHTML = body.split('\n').map(l =>
-      l.startsWith('- ')||l.startsWith('* ') ? `<li>${esc(l.replace(/^[-*]\s*/,''))}</li>` : `<p>${esc(l)}</p>`
-    ).join('');
-    const hasList = /^[-*] /m.test(body);
-    return `<div class="ai-section-title">${esc(heading)}</div><div class="ai-section-body">${hasList?'<ul>'+bodyHTML+'</ul>':bodyHTML}</div>`;
+    const html = body.split('\n').map(l => l.startsWith('- ')||l.startsWith('* ') ? `<li>${esc(l.replace(/^[-*]\s*/,''))}</li>` : `<p>${esc(l)}</p>`).join('');
+    return `<div class="ai-section-title">${esc(heading)}</div><div class="ai-section-body">${/^[-*] /m.test(body)?'<ul>'+html+'</ul>':html}</div>`;
   }).join('');
 }
 function editAI() {
   const book = getBook(currentBookId); if (!book) return;
-  const area = document.getElementById('ai-area');
-  area.innerHTML = `<div class="ai-edit"><textarea id="ai-edit-ta">${book.aiSummary||''}</textarea></div>
-    <button class="btn-primary sage" onclick="saveAI()" style="margin-top:10px">Save</button>`;
+  document.getElementById('ai-area').innerHTML = `<div class="ai-edit"><textarea id="ai-edit-ta">${book.aiSummary||''}</textarea></div>
+    <button class="btn-primary sage" onclick="saveAISummary()" style="margin-top:10px">Save</button>`;
 }
-function saveAI() {
+async function saveAISummary() {
   const book = getBook(currentBookId); if (!book) return;
   book.aiSummary = document.getElementById('ai-edit-ta').value;
-  persist(book);
   renderAI(book);
   toast('Summary saved');
+  await apiSaveBook(book);
 }
-
 async function generateAI() {
   const book = getBook(currentBookId); if (!book) return;
   const area = document.getElementById('ai-area');
   document.getElementById('btn-ai-gen').style.display = 'none';
   document.getElementById('btn-ai-regen').style.display = 'none';
-  area.innerHTML = `<div class="ai-box"><div class="ai-box-header">Generating your summary...</div>
-    <div class="ai-loading"><div class="spinner"></div><span>Reading your journey...</span></div></div>`;
-
-  const entriesText = (book.entries||[]).map(e =>
-    `[${e.position.toUpperCase()}] ${e.emoji} ${e.note||'(no note)'}`
-  ).join('\n');
-
-  const prompt = `You are helping a reader create a personal summary of a book they finished. Use ONLY the information from their journal entries and notes below. Do NOT use outside knowledge about the book.
-
-Book: "${book.title}" by ${book.author||'unknown'}
-Category: ${book.category ? CATEGORIES[book.category]?.label : 'not set'}${book.subCategory ? ' / '+book.subCategory : ''}
-Recommended: ${book.recommend ? 'Yes' : 'No'}
-
-Their journal entries during reading (in order from start to finish):
-${entriesText || '(none)'}
-
-Their notes:
-About the book: ${book.notes?.about || '(none)'}
-Final thoughts: ${book.notes?.final || '(none)'}
-
-Generate a warm, personal reading summary with these sections (use ## headings):
-
-## The Plot
-2-3 sentences reconstructing what the book was about, based only on clues from their notes. If they didn't write much, keep it brief and honest.
-
-## My Journey Through It
-Walk through their emotional arc from beginning to middle to end. Reference specific moods and thoughts they recorded. Be specific, not generic.
-
-## What I Loved
-Bullet points of specific things they enjoyed, pulled from positive entries and notes.
-
-## What I Didn't Love
-Bullet points of things they didn't enjoy, from negative entries. If everything was positive, say "Honestly, I loved it all."
-
-## Would I Read It Again?
-One line based on their overall sentiment and recommend status.
-
-Write it like the reader is talking to a friend. Warm, honest, personal. Not a book report.`;
-
+  area.innerHTML = `<div class="ai-box"><div class="ai-box-header">Generating your summary...</div><div class="ai-loading"><div class="spinner"></div><span>Reading your journey...</span></div></div>`;
+  const entriesText = (book.entries||[]).map(e => `[${e.position.toUpperCase()}] ${e.emoji} ${e.note||'(no note)'}`).join('\n');
+  const prompt = `You are helping a reader create a personal summary of a book they finished. Use ONLY their journal entries and notes below. Do NOT use outside knowledge.\n\nBook: "${book.title}" by ${book.author||'unknown'}\nCategory: ${book.category?CATEGORIES[book.category]?.label:'not set'}${book.subCategory?' / '+book.subCategory:''}\nRecommended: ${book.recommend?'Yes':'No'}\n\nJournal entries:\n${entriesText||'(none)'}\n\nNotes:\nAbout: ${book.notes?.about||'(none)'}\nFinal thoughts: ${book.notes?.final||'(none)'}\n\nGenerate a warm, personal summary with ## headings:\n## The Plot\n2-3 sentences based on clues from their notes.\n## My Journey Through It\nEmotional arc from beginning to end, referencing specific moods.\n## What I Loved\nBullets from positive entries.\n## What I Didn't Love\nBullets from negative entries, or "Honestly, I loved it all."\n## Would I Read It Again?\nOne line based on sentiment.\n\nWrite like the reader talking to a friend.`;
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1200, messages:[{role:'user',content:prompt}] })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,messages:[{role:'user',content:prompt}]})
     });
     const data = await resp.json();
-    const text = data.content?.find(b => b.type==='text')?.text || '';
-    book.aiSummary = text;
-    persist(book);
+    book.aiSummary = data.content?.find(b=>b.type==='text')?.text || '';
     renderAI(book);
     toast('Summary generated!');
+    await apiSaveBook(book);
   } catch(e) {
-    area.innerHTML = '<p style="color:var(--rose);font-size:.9rem;padding:12px">Could not generate summary. Try again.</p>';
-    document.getElementById('btn-ai-gen').style.display = book.aiSummary?'none':'inline-flex';
-    document.getElementById('btn-ai-regen').style.display = book.aiSummary?'inline-flex':'none';
+    area.innerHTML = '<p style="color:var(--rose);padding:12px">Could not generate summary.</p>';
+    document.getElementById('btn-ai-gen').style.display = 'inline-flex';
   }
 }
 
@@ -1124,58 +1050,27 @@ Write it like the reader is talking to a friend. Warm, honest, personal. Not a b
    STATS
    ============================================================== */
 function renderStats() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const finished = books.filter(b => b.status === 'finished');
-  const thisYear = finished.filter(b => b.finishedAt && new Date(b.finishedAt).getFullYear() === year);
-  const thisMonth = thisYear.filter(b => new Date(b.finishedAt).getMonth() === month);
-
-  // Category breakdown
-  const catCounts = {};
-  Object.keys(CATEGORIES).forEach(k => catCounts[k] = 0);
-  thisYear.forEach(b => { if (b.category && catCounts[b.category] !== undefined) catCounts[b.category]++; });
-  const maxCat = Math.max(1, ...Object.values(catCounts));
-
-  // Monthly breakdown
+  const now = new Date(); const year = now.getFullYear(); const month = now.getMonth();
+  const finished = books.filter(b => b.status==='finished');
+  const thisYear = finished.filter(b => b.finishedAt && new Date(b.finishedAt).getFullYear()===year);
+  const thisMonth = thisYear.filter(b => new Date(b.finishedAt).getMonth()===month);
+  const catCounts = {}; Object.keys(CATEGORIES).forEach(k => catCounts[k]=0);
+  thisYear.forEach(b => { if(b.category && catCounts[b.category]!==undefined) catCounts[b.category]++; });
+  const maxCat = Math.max(1,...Object.values(catCounts));
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const monthlyCounts = Array(12).fill(0);
-  thisYear.forEach(b => { monthlyCounts[new Date(b.finishedAt).getMonth()]++; });
-  const maxMonth = Math.max(1, ...monthlyCounts);
-
-  const container = document.getElementById('stats-content');
-  container.innerHTML = `
-    <div class="stat-card">
-      <div class="stat-card-label">Books Finished This Year</div>
-      <div class="stat-card-value">${thisYear.length}</div>
-      <div class="stat-card-sub">${thisMonth.length} this month &middot; ${books.filter(b=>b.status==='reading').length} currently reading</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-card-label">By Category (${year})</div>
-      <div class="cat-breakdown">
-        ${Object.entries(CATEGORIES).map(([key,cat]) => `
-          <div class="cat-row">
-            <span class="cat-label">${cat.label}</span>
-            <div class="cat-bar-wrap"><div class="cat-bar" style="width:${(catCounts[key]/maxCat)*100}%;background:${cat.color}"></div></div>
-            <span class="cat-count">${catCounts[key]}</span>
-          </div>`).join('')}
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-card-label">Month by Month (${year})</div>
-      <div class="cat-breakdown">
-        ${monthlyCounts.map((c,i) => i <= month ? `
-          <div class="cat-row">
-            <span class="cat-label" style="width:40px">${monthNames[i]}</span>
-            <div class="cat-bar-wrap"><div class="cat-bar" style="width:${(c/maxMonth)*100}%;background:var(--amber)"></div></div>
-            <span class="cat-count">${c}</span>
-          </div>` : '').join('')}
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-card-label">Want to Read</div>
-      <div class="stat-card-value">${books.filter(b=>b.status==='want').length}</div>
-    </div>`;
+  const mc = Array(12).fill(0);
+  thisYear.forEach(b => mc[new Date(b.finishedAt).getMonth()]++);
+  const maxM = Math.max(1,...mc);
+  document.getElementById('stats-content').innerHTML = `
+    <div class="stat-card"><div class="stat-card-label">Books Finished This Year</div><div class="stat-card-value">${thisYear.length}</div>
+      <div class="stat-card-sub">${thisMonth.length} this month &middot; ${books.filter(b=>b.status==='reading').length} currently reading</div></div>
+    <div class="stat-card"><div class="stat-card-label">By Category (${year})</div><div class="cat-breakdown">
+      ${Object.entries(CATEGORIES).map(([k,c])=>`<div class="cat-row"><span class="cat-label">${c.label}</span><div class="cat-bar-wrap"><div class="cat-bar" style="width:${(catCounts[k]/maxCat)*100}%;background:${c.color}"></div></div><span class="cat-count">${catCounts[k]}</span></div>`).join('')}
+    </div></div>
+    <div class="stat-card"><div class="stat-card-label">Month by Month (${year})</div><div class="cat-breakdown">
+      ${mc.map((c,i)=>i<=month?`<div class="cat-row"><span class="cat-label" style="width:40px">${monthNames[i]}</span><div class="cat-bar-wrap"><div class="cat-bar" style="width:${(c/maxM)*100}%;background:var(--amber)"></div></div><span class="cat-count">${c}</span></div>`:'').join('')}
+    </div></div>
+    <div class="stat-card"><div class="stat-card-label">Want to Read</div><div class="stat-card-value">${books.filter(b=>b.status==='want').length}</div></div>`;
 }
 
 /* ==============================================================
@@ -1184,36 +1079,29 @@ function renderStats() {
 function openShareModal() {
   const book = currentBookId ? getBook(currentBookId) : null;
   if (!book) { toast('Open a book to share'); return; }
-  const moods = [...new Set((book.entries||[]).map(e=>e.emoji))].slice(-6);
   document.getElementById('share-title').textContent = book.title||'Untitled';
   document.getElementById('share-author').textContent = book.author||'';
-  document.getElementById('share-moods').textContent = moods.join(' ');
+  document.getElementById('share-moods').textContent = [...new Set((book.entries||[]).map(e=>e.emoji))].slice(-6).join(' ');
   document.getElementById('share-tag').textContent = statusLabel(book.status);
-  const coverEl = document.getElementById('share-cover');
-  coverEl.innerHTML = book.cover ? `<img src="${esc(book.cover)}" alt="">` : '<span style="font-size:2rem">&#x1f4d6;</span>';
+  document.getElementById('share-cover').innerHTML = book.cover ? `<img src="${esc(book.cover)}" alt="">` : '<span style="font-size:2rem">&#x1f4d6;</span>';
   document.getElementById('share-modal').classList.add('open');
 }
 function buildShareText() {
   const book = getBook(currentBookId); if (!book) return '';
   const moods = [...new Set((book.entries||[]).map(e=>e.emoji))].join(' ');
-  const rec = book.recommend ? ' | Recommended!' : '';
-  let text = `"${book.title}"${book.author?' by '+book.author:''}\n${statusLabel(book.status)} ${moods}${rec}`;
+  let text = `"${book.title}"${book.author?' by '+book.author:''}\n${statusLabel(book.status)} ${moods}${book.recommend?' | Recommended!':''}`;
   if (book.notes?.about) text += '\n\n' + book.notes.about;
   if (book.notes?.final) text += '\n\n' + book.notes.final;
   if (book.aiSummary) text += '\n\n---\n' + book.aiSummary;
   return text;
 }
 function copyShare() {
-  navigator.clipboard.writeText(buildShareText()).then(() => {
-    toast('Copied!');
-    document.getElementById('share-modal').classList.remove('open');
-  });
+  navigator.clipboard.writeText(buildShareText()).then(() => { toast('Copied!'); document.getElementById('share-modal').classList.remove('open'); });
 }
 function nativeShare() {
   const book = getBook(currentBookId);
-  if (navigator.share) {
-    navigator.share({ title: book?.title||'Reading Memory', text: buildShareText() }).catch(()=>{});
-  } else { copyShare(); }
+  if (navigator.share) navigator.share({title:book?.title||'Reading Memory',text:buildShareText()}).catch(()=>{});
+  else copyShare();
   document.getElementById('share-modal').classList.remove('open');
 }
 
@@ -1223,20 +1111,14 @@ function nativeShare() {
 function esc(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
 function fmtDate(ts) {
   const d = new Date(ts);
-  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
 
 /* ==============================================================
    INIT
    ============================================================== */
-loadLocal();
-renderHome();
-initFirebase();
-
-// Close suggest dropdown when clicking outside
-document.addEventListener('click', e => {
-  if (!e.target.closest('.suggest-wrap')) document.getElementById('suggest-list').classList.remove('open');
-});
+document.addEventListener('click', e => { if(!e.target.closest('.suggest-wrap')) document.getElementById('suggest-list').classList.remove('open'); });
+checkAuth();
 </script>
 </body>
 </html>
