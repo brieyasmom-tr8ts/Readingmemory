@@ -258,7 +258,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 <body>
 
 <div id="auth-screen" class="auth-screen" style="display:none">
-  <div class="auth-logo"><img src="/logo.png" alt="ReadThat.me" style="width:90vw;max-width:420px;height:auto;margin-bottom:32px"></div>
+  <div class="auth-logo" style="width:85vw;max-width:380px;height:280px;overflow:hidden;margin-bottom:24px"><img src="/logo.png" alt="ReadThat.me" style="width:180%;max-width:none;margin-left:-40%;margin-top:-8%"></div>
   <div class="auth-form">
     <input type="text" class="field-input" id="auth-name" placeholder="Your name" style="display:none">
     <input type="email" class="field-input" id="auth-email" placeholder="Email">
@@ -271,7 +271,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 
 <div id="app" style="display:none">
   <div id="view-home" class="view active">
-    <div class="topbar"><h1 style="display:flex;align-items:center;justify-content:center"><img src="/logo.png" alt="ReadThat.me" height="44"></h1><button class="btn-icon" onclick="showView('stats')">&#x1f4ca;</button></div>
+    <div class="topbar"><h1 style="display:flex;align-items:center;justify-content:center;overflow:hidden;height:40px"><img src="/logo.png" alt="ReadThat.me" style="height:120px;margin-top:-2px"></h1><button class="btn-icon" onclick="showView('stats')">&#x1f4ca;</button></div>
     <div class="auth-bar" id="user-bar"><span id="user-name-display"></span><button onclick="doLogout()">Log out</button></div>
     <div class="stats-strip" id="home-stats"></div>
     <div class="search-sort-bar">

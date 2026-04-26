@@ -34,7 +34,9 @@ If you can think of multiple possible matches, return the most popular/well-know
     });
     const data = await resp.json();
     if (!resp.ok) return json({ error: 'AI request failed' }, 502);
-    const text = data.content?.find(b => b.type === 'text')?.text || '{}';
+    let text = data.content?.find(b => b.type === 'text')?.text || '{}';
+    // Strip markdown code fences if present
+    text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     try {
       const parsed = JSON.parse(text);
       // Try to find cover via ISBN on Open Library
@@ -55,8 +57,9 @@ If you can think of multiple possible matches, return the most popular/well-know
         }
       }
       return json({ title: parsed.title || '', author: parsed.author || '', description: parsed.description || '', cover });
-    } catch {
-      return json({ title: '', author: '', description: '', cover: null });
+    } catch (parseErr) {
+      // If JSON parse fails, try to extract info from raw text
+      return json({ title: '', author: '', description: text.substring(0, 300), cover: null });
     }
   } catch (e) {
     return json({ error: 'Search failed' }, 502);
