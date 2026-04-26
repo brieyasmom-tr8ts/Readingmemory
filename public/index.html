@@ -540,9 +540,26 @@ function openAddView(){
 function handleCoverInput(e){
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
-  reader.onload=ev=>{openCrop(ev.target.result);};
+  reader.onload=ev=>{
+    const dataURL=ev.target.result;
+    openCrop(dataURL);
+    // Try AI to read title/author from cover
+    readCoverWithAI(dataURL);
+  };
   reader.readAsDataURL(file);
   e.target.value='';
+}
+async function readCoverWithAI(dataURL){
+  const titleField=document.getElementById('add-title');
+  const authorField=document.getElementById('add-author');
+  // Only auto-fill if fields are empty
+  if(titleField.value.trim()&&authorField.value.trim())return;
+  try{
+    const d=await api('read-cover',{method:'POST',body:{image:dataURL}});
+    if(d.title&&!titleField.value.trim()){titleField.value=d.title;checkDuplicate(d.title);}
+    if(d.author&&!authorField.value.trim()){authorField.value=d.author;}
+    if(d.title||d.author)toast('Found: '+(d.title||'')+(d.author?' by '+d.author:''));
+  }catch(x){/* silent fail */}
 }
 
 /* Crop — draggable edges over the image */
@@ -712,12 +729,22 @@ function renderRating(b){
   let dots='';for(let i=1;i<=10;i++){const cls=b.rating&&i<=b.rating?(b.rating>=6?'filled high':'filled'):'';dots+=`<div class="rating-dot ${cls}" onclick="setRating(${i})">${i}</div>`;}
   area.innerHTML=`<div class="rating-row"><span class="rating-label">Rating</span><div class="rating-dots">${dots}</div><span class="rating-value">${b.rating||'-'}</span></div>`;
 }
-async function setRating(n){const b=getBook(currentBookId);if(!b)return;b.rating=b.rating===n?null:n;renderRating(b);renderRecommendBanner(b);await apiSaveBook(b);}
+async function setRating(n){const b=getBook(currentBookId);if(!b)return;b.rating=b.rating===n?null:n;renderRating(b);renderRecommendBanner(b);await apiSaveBook(b);if(b.rating&&b.rating>=6)fetchRecommendations(b);}
 
 function renderRecommendBanner(b){
   const area=document.getElementById('recommend-banner-area');
-  if(b.rating&&b.rating>=6){area.innerHTML=`<div class="recommend-banner">This is a ${b.rating}/10 — you'd probably love more books like this! Try searching for similar titles in "${b.category&&CATEGORIES[b.category]?CATEGORIES[b.category].label:'this category'}".</div>`;}
-  else area.innerHTML='';
+  if(b.rating&&b.rating>=6){
+    area.innerHTML=`<div class="recommend-banner">${b.rating}/10 — You loved this one!<div id="recs-area" style="margin-top:8px;font-size:.82rem;opacity:.9"></div></div>`;
+  } else area.innerHTML='';
+}
+async function fetchRecommendations(b){
+  const area=document.getElementById('recs-area');
+  if(!area)return;
+  area.innerHTML='<em>Finding similar books...</em>';
+  try{
+    const d=await api('recommend',{method:'POST',body:{title:b.title,author:b.author,category:b.category&&CATEGORIES[b.category]?CATEGORIES[b.category].label:null,subCategory:b.subCategory,rating:b.rating,notes:b.notes}});
+    area.innerHTML='<strong>Books you might love:</strong><br>'+esc(d.recommendations).replace(/\n/g,'<br>');
+  }catch(x){area.innerHTML='';}
 }
 
 function renderDetailSource(b){
