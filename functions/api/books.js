@@ -34,6 +34,8 @@ export async function onRequestGet(context) {
       b.finishedAt = b.finished_at;
       b.createdAt = b.created_at;
       b.aiSummary = b.ai_summary;
+      b.rating = b.rating || null;
+      b.source = b.source || '';
     });
   }
 
@@ -63,14 +65,15 @@ export async function onRequestPost(context) {
 
   await env.DB.prepare(`
     INSERT INTO books (id, user_id, title, author, cover, status, category, sub_category,
-      recommended_by, recommend, notes_about, notes_final, ai_summary, started_at, finished_at, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      recommended_by, recommend, notes_about, notes_final, ai_summary, started_at, finished_at, created_at, rating, source)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, userId, body.title, body.author || '', body.cover || null,
     body.status || 'want', body.category || null, body.subCategory || null,
     body.recommendedBy || '', body.recommend ? 1 : 0,
     body.notes?.about || '', body.notes?.final || '', body.aiSummary || null,
-    body.startedAt || null, body.finishedAt || null, body.createdAt || now
+    body.startedAt || null, body.finishedAt || null, body.createdAt || now,
+    body.rating || null, body.source || ''
   ).run();
 
   // Save custom subcategory if provided and new
