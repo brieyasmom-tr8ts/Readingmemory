@@ -107,12 +107,17 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .dup-warning p{font-size:.88rem;color:var(--ink-soft)}
 .dup-warning strong{color:var(--ink)}
 /* Crop modal */
-.crop-overlay{display:none;position:fixed;inset:0;z-index:700;background:rgba(26,20,16,.9);flex-direction:column;align-items:center;justify-content:center}
+.crop-overlay{display:none;position:fixed;inset:0;z-index:700;background:rgba(26,20,16,.95);flex-direction:column;align-items:center;justify-content:center;padding:20px}
 .crop-overlay.open{display:flex}
-.crop-container{width:280px;height:400px;overflow:hidden;border-radius:var(--radius);position:relative;background:#000;touch-action:none}
-.crop-container img{position:absolute;cursor:grab;user-select:none;-webkit-user-select:none}
-.crop-actions{display:flex;gap:12px;margin-top:20px}
-.crop-hint{color:rgba(255,255,255,.6);font-size:.82rem;margin-top:12px}
+.crop-frame{position:relative;width:260px;height:380px;border:2px solid var(--amber);border-radius:var(--radius);overflow:hidden;background:#000}
+.crop-canvas{display:block;width:100%;height:100%}
+.crop-controls{display:flex;align-items:center;gap:12px;margin-top:16px;width:260px}
+.crop-controls label{color:rgba(255,255,255,.5);font-size:.75rem;flex-shrink:0}
+.crop-slider{-webkit-appearance:none;appearance:none;flex:1;height:4px;background:rgba(255,255,255,.2);border-radius:2px;outline:none}
+.crop-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--amber);cursor:pointer}
+.crop-slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--amber);cursor:pointer;border:none}
+.crop-actions{display:flex;gap:12px;margin-top:16px}
+.crop-hint{color:rgba(255,255,255,.5);font-size:.78rem;margin-top:10px;text-align:center}
 /* Detail */
 .hero{width:100%;background:var(--ink);padding:28px 20px 24px;display:flex;gap:18px;align-items:flex-end;position:relative}
 .hero-cover{width:100px;height:148px;border-radius:8px;overflow:hidden;box-shadow:var(--shadow-lg);flex-shrink:0;background:var(--ink-soft);display:flex;align-items:center;justify-content:center}
@@ -421,8 +426,14 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 <div class="confirm-overlay" id="confirm-modal"><div class="confirm-box"><p id="confirm-msg"></p><div class="confirm-actions"><button class="btn-secondary" onclick="closeConfirm()">Cancel</button><button class="btn-danger" id="confirm-btn">Confirm</button></div></div></div>
 
 <div class="crop-overlay" id="crop-modal">
-  <div class="crop-container" id="crop-container"><img id="crop-img" src="" alt=""></div>
-  <div class="crop-hint">Drag to position the cover</div>
+  <div class="crop-frame" id="crop-frame">
+    <canvas class="crop-canvas" id="crop-canvas" width="520" height="760"></canvas>
+  </div>
+  <div class="crop-controls">
+    <label>Zoom</label>
+    <input type="range" class="crop-slider" id="crop-zoom" min="100" max="300" value="100" oninput="cropDraw()">
+  </div>
+  <div class="crop-hint">Drag to move, slider to zoom</div>
   <div class="crop-actions">
     <button class="btn-secondary" onclick="cancelCrop()" style="color:#fff;border-color:rgba(255,255,255,.3)">Cancel</button>
     <button class="btn-primary amber" onclick="applyCrop()">Use This</button>
@@ -437,8 +448,6 @@ const SOURCES=['Kindle Unlimited','Libby','Purchased','Audible','Library','Borro
 const SORT_OPTIONS=[{key:'recent',label:'Recent'},{key:'alpha',label:'A-Z'},{key:'rating',label:'Rating'},{key:'finished',label:'Date Finished'},{key:'started',label:'Date Started'}];
 
 let books=[],customSubs={},currentBookId=null,currentFilter='all',currentSort='recent',tempCoverURL=null,addStatus='want',addCatMain=null,addCatSub=null,addSource='',entryPos=null,entryEmoji=null,suggestTimer=null,authMode='login',currentUser=null,noteTimer=null;
-// Crop state
-let cropRawURL=null,cropOffsetY=0,cropDragging=false,cropStartY=0,cropImgNatW=0,cropImgNatH=0;
 
 /* === API === */
 async function api(p,o={}){const r=await fetch('/api/'+p,{method:o.method||'GET',headers:o.body?{'Content-Type':'application/json'}:{},body:o.body?JSON.stringify(o.body):undefined,credentials:'same-origin'});const d=await r.json();if(!r.ok)throw new Error(d.error||'Request failed');return d;}
@@ -518,45 +527,63 @@ function handleCoverInput(e){
   e.target.value='';
 }
 
-/* Crop */
+/* Crop — canvas-based with drag + zoom */
+let cropImg=null,cropX=0,cropY=0,cropScale=1,cropDrag=false,cropLastX=0,cropLastY=0;
+
 function openCrop(dataURL){
-  cropRawURL=dataURL;cropOffsetY=0;
-  const img=document.getElementById('crop-img');
-  img.src=dataURL;
-  img.onload=()=>{
-    const container=document.getElementById('crop-container');
-    const cw=container.offsetWidth,ch=container.offsetHeight;
-    const ratio=cw/img.naturalWidth;
-    img.style.width=cw+'px';img.style.height=(img.naturalHeight*ratio)+'px';
-    img.style.left='0px';img.style.top='0px';
-    cropImgNatW=img.naturalWidth;cropImgNatH=img.naturalHeight;
-    cropOffsetY=0;
+  cropImg=new Image();
+  cropImg.onload=()=>{
+    cropScale=1;cropX=0;cropY=0;
+    document.getElementById('crop-zoom').value=100;
+    document.getElementById('crop-modal').classList.add('open');
+    cropDraw();
+    initCropDrag();
   };
-  document.getElementById('crop-modal').classList.add('open');
-  // Drag handlers
-  const container=document.getElementById('crop-container');
-  const onStart=e=>{cropDragging=true;cropStartY=(e.touches?e.touches[0].clientY:e.clientY)-cropOffsetY;};
-  const onMove=e=>{if(!cropDragging)return;e.preventDefault();const y=(e.touches?e.touches[0].clientY:e.clientY)-cropStartY;const maxY=0;const minY=container.offsetHeight-parseFloat(img.style.height);cropOffsetY=Math.max(minY,Math.min(maxY,y));img.style.top=cropOffsetY+'px';};
-  const onEnd=()=>{cropDragging=false;};
-  container.onmousedown=onStart;container.ontouchstart=onStart;
-  container.onmousemove=onMove;container.ontouchmove=onMove;
-  container.onmouseup=onEnd;container.ontouchend=onEnd;
+  cropImg.src=dataURL;
 }
-function cancelCrop(){document.getElementById('crop-modal').classList.remove('open');cropRawURL=null;}
-function applyCrop(){
-  const container=document.getElementById('crop-container');
-  const img=document.getElementById('crop-img');
-  const cw=container.offsetWidth,ch=container.offsetHeight;
-  const scale=cropImgNatW/cw;
-  const sx=0,sy=Math.abs(cropOffsetY)*scale,sw=cropImgNatW,sh=ch*scale;
-  const canvas=document.createElement('canvas');canvas.width=400;canvas.height=600;
+function cropDraw(){
+  const canvas=document.getElementById('crop-canvas');
   const ctx=canvas.getContext('2d');
-  ctx.drawImage(img,sx,sy,sw,sh,0,0,400,600);
+  const cw=canvas.width,ch=canvas.height;
+  ctx.clearRect(0,0,cw,ch);
+  ctx.fillStyle='#000';ctx.fillRect(0,0,cw,ch);
+  if(!cropImg)return;
+  cropScale=parseInt(document.getElementById('crop-zoom').value)/100;
+  // Fit image to fill frame width at scale=1, then apply zoom
+  const baseScale=cw/cropImg.naturalWidth;
+  const s=baseScale*cropScale;
+  const dw=cropImg.naturalWidth*s,dh=cropImg.naturalHeight*s;
+  // Clamp position so image covers the frame
+  const minX=Math.min(0,cw-dw),maxX=Math.max(0,cw-dw);
+  const minY=Math.min(0,ch-dh),maxY=Math.max(0,ch-dh);
+  cropX=Math.max(minX,Math.min(maxX,cropX));
+  cropY=Math.max(minY,Math.min(maxY,cropY));
+  ctx.drawImage(cropImg,cropX,cropY,dw,dh);
+}
+function initCropDrag(){
+  const canvas=document.getElementById('crop-canvas');
+  function getXY(e){const t=e.touches?e.touches[0]:e;return{x:t.clientX,y:t.clientY};}
+  function onStart(e){e.preventDefault();cropDrag=true;const p=getXY(e);cropLastX=p.x;cropLastY=p.y;}
+  function onMove(e){if(!cropDrag)return;e.preventDefault();const p=getXY(e);const dx=(p.x-cropLastX)*2,dy=(p.y-cropLastY)*2;cropX+=dx;cropY+=dy;cropLastX=p.x;cropLastY=p.y;cropDraw();}
+  function onEnd(){cropDrag=false;}
+  canvas.addEventListener('mousedown',onStart);
+  canvas.addEventListener('mousemove',onMove);
+  canvas.addEventListener('mouseup',onEnd);
+  canvas.addEventListener('mouseleave',onEnd);
+  canvas.addEventListener('touchstart',onStart,{passive:false});
+  canvas.addEventListener('touchmove',onMove,{passive:false});
+  canvas.addEventListener('touchend',onEnd);
+}
+function cancelCrop(){document.getElementById('crop-modal').classList.remove('open');cropImg=null;}
+function applyCrop(){
+  const canvas=document.getElementById('crop-canvas');
+  // Export at good quality
   tempCoverURL=canvas.toDataURL('image/jpeg',0.85);
   document.getElementById('cover-preview').src=tempCoverURL;
   document.getElementById('cover-preview').style.display='block';
   document.getElementById('cover-placeholder').style.display='none';
   document.getElementById('crop-modal').classList.remove('open');
+  cropImg=null;
 }
 
 function pickAddStatus(btn){document.querySelectorAll('#view-add .pill[data-status]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');addStatus=btn.dataset.status;document.getElementById('recby-group').style.display=addStatus==='want'?'':'none';}
@@ -566,7 +593,7 @@ function renderAddSources(){
   SOURCES.forEach(s=>{const btn=document.createElement('button');btn.className='source-pill'+(addSource===s?' active':'');btn.textContent=s;btn.onclick=()=>{addSource=addSource===s?'':s;renderAddSources();};row.appendChild(btn);});
 }
 function renderCatPicker(){const row=document.getElementById('cat-main-row');row.innerHTML='';Object.entries(CATEGORIES).forEach(([k,c])=>{const btn=document.createElement('button');btn.className='pill'+(addCatMain===k?' active':'');btn.textContent=c.label;btn.onclick=()=>{addCatMain=k;addCatSub=null;renderCatPicker();};row.appendChild(btn);});renderSubCatPicker();}
-function renderSubCatPicker(){const g=document.getElementById('subcat-group'),row=document.getElementById('cat-sub-row');if(!addCatMain){g.style.display='none';return;}g.style.display='';row.innerHTML='';[...CATEGORIES[addCatMain].subs,...(customSubs[addCatMain]||[])].forEach(s=>{const btn=document.createElement('button');btn.className='pill sm'+(addCatSub===s?' active':'');btn.textContent=s;btn.onclick=()=>{addCatSub=s;renderSubCatPicker();};row.appendChild(btn);});const ab=document.createElement('button');ab.className='pill sm pill-add';ab.textContent='+ Add';ab.onclick=()=>{const n=prompt('New sub-category:');if(n?.trim()){if(!customSubs[addCatMain])customSubs[addCatMain]=[];if(!customSubs[addCatMain].includes(n.trim()))customSubs[addCatMain].push(n.trim());addCatSub=n.trim();renderSubCatPicker();}};row.appendChild(ab);}
+function renderSubCatPicker(){const g=document.getElementById('subcat-group'),row=document.getElementById('cat-sub-row');if(!addCatMain){g.style.display='none';return;}g.style.display='';row.innerHTML='';const defaults=CATEGORIES[addCatMain].subs;const custom=(customSubs[addCatMain]||[]).filter(s=>!defaults.includes(s));[...defaults,...custom].forEach(s=>{const btn=document.createElement('button');btn.className='pill sm'+(addCatSub===s?' active':'');btn.textContent=s;btn.onclick=()=>{addCatSub=s;renderSubCatPicker();};row.appendChild(btn);});const ab=document.createElement('button');ab.className='pill sm pill-add';ab.textContent='+ Add';ab.onclick=()=>{const n=prompt('New sub-category:');if(n?.trim()){if(!customSubs[addCatMain])customSubs[addCatMain]=[];if(!customSubs[addCatMain].includes(n.trim()))customSubs[addCatMain].push(n.trim());addCatSub=n.trim();renderSubCatPicker();}};row.appendChild(ab);}
 
 function onTitleInput(){clearTimeout(suggestTimer);const q=document.getElementById('add-title').value.trim();if(q.length<3){document.getElementById('suggest-list').classList.remove('open');checkDuplicate(q);return;}checkDuplicate(q);suggestTimer=setTimeout(()=>fetchSuggestions(q),400);}
 async function fetchSuggestions(q){try{const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5&fields=title,author_name,cover_i,key`);const d=await r.json();const list=document.getElementById('suggest-list');if(!d.docs?.length){list.classList.remove('open');return;}list.innerHTML=d.docs.map(x=>{const a=(x.author_name||[])[0]||'';const c=x.cover_i?`https://covers.openlibrary.org/b/id/${x.cover_i}-S.jpg`:'';return`<div class="suggest-item" onclick="pickSuggestion(this)" data-title="${esc(x.title)}" data-author="${esc(a)}" data-cover="${x.cover_i||0}"><div class="suggest-item-cover">${c?`<img src="${c}" alt="">`:''}</div><div class="suggest-item-text"><div class="suggest-item-title">${esc(x.title)}</div><div class="suggest-item-author">${esc(a)}</div></div></div>`;}).join('')+'<div class="suggest-dismiss" onclick="document.getElementById(\'suggest-list\').classList.remove(\'open\')">Dismiss suggestions</div>';list.classList.add('open');}catch(e){}}
