@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#c8843a">
-<title>Reading Memory</title>
+<title>ReadThat.me</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/svg+xml" href="/icon.svg">
 <link rel="apple-touch-icon" href="/icon.svg">
@@ -233,7 +233,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 
 <div id="auth-screen" class="auth-screen" style="display:none">
   <div class="auth-logo"><img src="/icon.svg" alt="" width="80" height="80"></div>
-  <div class="auth-title">Reading Memory</div>
+  <div class="auth-title">ReadThat.me</div>
   <div class="auth-sub">Remember every book and how it made you feel</div>
   <div class="auth-form">
     <input type="text" class="field-input" id="auth-name" placeholder="Your name" style="display:none">
@@ -247,7 +247,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 
 <div id="app" style="display:none">
   <div id="view-home" class="view active">
-    <div class="topbar"><h1>Reading Memory</h1><button class="btn-icon" onclick="showView('stats')">&#x1f4ca;</button></div>
+    <div class="topbar"><h1>ReadThat.me</h1><button class="btn-icon" onclick="showView('stats')">&#x1f4ca;</button></div>
     <div class="auth-bar" id="user-bar"><span id="user-name-display"></span><button onclick="doLogout()">Log out</button></div>
     <div class="stats-strip" id="home-stats"></div>
     <div class="search-sort-bar">
@@ -682,7 +682,7 @@ function renderStats(){
 function openShareModal(){const b=currentBookId?getBook(currentBookId):null;if(!b){toast('Open a book to share');return;}document.getElementById('share-title').textContent=b.title||'Untitled';document.getElementById('share-author').textContent=b.author||'';document.getElementById('share-moods').textContent=[...new Set((b.entries||[]).map(e=>e.emoji))].slice(-6).join(' ');document.getElementById('share-tag').textContent=statusLabel(b.status);document.getElementById('share-cover').innerHTML=b.cover?`<img src="${esc(b.cover)}" alt="">`:'<span style="font-size:2rem">&#x1f4d6;</span>';document.getElementById('share-modal').classList.add('open');}
 function buildShareText(){const b=getBook(currentBookId);if(!b)return'';let t=`"${b.title}"${b.author?' by '+b.author:''}\n${statusLabel(b.status)}${b.rating?' — '+b.rating+'/10':''}${b.recommend?' | Recommended!':''}`;if(b.notes?.about)t+='\n\n'+b.notes.about;if(b.notes?.final)t+='\n\n'+b.notes.final;if(b.aiSummary)t+='\n\n---\n'+b.aiSummary;return t;}
 function copyShare(){navigator.clipboard.writeText(buildShareText()).then(()=>{toast('Copied!');document.getElementById('share-modal').classList.remove('open');});}
-function nativeShare(){const b=getBook(currentBookId);if(navigator.share)navigator.share({title:b?.title||'Reading Memory',text:buildShareText()}).catch(()=>{});else copyShare();document.getElementById('share-modal').classList.remove('open');}
+function nativeShare(){const b=getBook(currentBookId);if(navigator.share)navigator.share({title:b?.title||'ReadThat.me',text:buildShareText()}).catch(()=>{});else copyShare();document.getElementById('share-modal').classList.remove('open');}
 
 /* === UTILS === */
 function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):'';}
