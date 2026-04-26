@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Reading Memory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     DESIGN TOKENS
+  ============================================================ */
+  :root {
+    --ink:       #1a1410;
+    --ink-soft:  #3d3028;
+    --sepia:     #7c5c3e;
+    --amber:     #c8843a;
+    --amber-lt:  #e8a85a;
+    --cream:     #f7f2eb;
+    --cream-dk:  #ede6d8;
+    --paper:     #faf7f2;
+    --paper-dk:  #f0ead8;
+    --sage:      #6b8c6b;
+    --rose:      #b0605a;
+    --fog:       rgba(26,20,16,0.08);
+    --fog-md:    rgba(26,20,16,0.15);
+    --shadow-sm: 0 2px 8px rgba(26,20,16,0.10);
+    --shadow-md: 0 6px 24px rgba(26,20,16,0.14);
+    --shadow-lg: 0 16px 48px rgba(26,20,16,0.18);
+    --radius:    14px;
+    --radius-sm: 8px;
+    --transition: 0.22s cubic-bezier(0.34,1.1,0.64,1);
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body:    'Lato', sans-serif;
+  }
+
+  /* ============================================================
+     RESET / BASE
+  ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; width: 100%;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  input, textarea, select, button { font-family: inherit; font-size: inherit; }
+  button { cursor: pointer; border: none; background: none; }
+  img { max-width: 100%; display: block; }
+
+  /* ============================================================
+     LAYOUT / VIEWS
+  ============================================================ */
+  #app { min-height: 100vh; display: flex; flex-direction: column; }
+  .view { display: none; flex-direction: column; min-height: 100vh; animation: fadeUp 0.3s ease; }
+  .view.active { display: flex; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ============================================================
+     TOP BAR
+  ============================================================ */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--paper);
+    border-bottom: 1px solid var(--fog-md);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 12px;
+    backdrop-filter: blur(8px);
+  }
+  .topbar h1 {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--ink);
+    flex: 1;
+  }
+  .topbar-sub {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--ink);
+    flex: 1;
+    font-style: italic;
+  }
+  .btn-icon {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    color: var(--ink-soft);
+    background: var(--fog);
+    transition: background var(--transition), transform var(--transition);
+    flex-shrink: 0;
+  }
+  .btn-icon:active { transform: scale(0.92); background: var(--fog-md); }
+  .btn-back { font-size: 1.3rem; }
+
+  /* ============================================================
+     MAIN CTA BUTTON
+  ============================================================ */
+  .btn-primary {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 13px 28px;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: var(--shadow-md);
+    transition: transform var(--transition), box-shadow var(--transition), background 0.2s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary:active { transform: scale(0.96); box-shadow: var(--shadow-sm); }
+  .btn-primary.amber { background: var(--amber); color: #fff; }
+  .btn-primary.sage  { background: var(--sage);  color: #fff; }
+  .btn-primary.rose  { background: var(--rose);  color: #fff; }
+  .btn-secondary {
+    border: 1.5px solid var(--fog-md);
+    color: var(--ink-soft);
+    padding: 10px 22px;
+    border-radius: 50px;
+    font-weight: 400;
+    font-size: 0.9rem;
+    background: var(--paper);
+    transition: background var(--transition);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-secondary:active { background: var(--cream-dk); }
+
+  /* ============================================================
+     FAB (Floating Add Button)
+  ============================================================ */
+  .fab {
+    position: fixed; bottom: 28px; right: 24px; z-index: 200;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--ink);
+    color: var(--cream);
+    font-size: 1.8rem;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-lg);
+    transition: transform var(--transition), background 0.2s;
+  }
+  .fab:active { transform: scale(0.92) rotate(15deg); }
+
+  /* ============================================================
+     HOME — book grid
+  ============================================================ */
+  #view-home .content {
+    padding: 20px 16px 100px;
+    flex: 1;
+  }
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 16px;
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--sepia);
+  }
+  .empty-state .icon { font-size: 3.5rem; opacity: 0.5; }
+  .empty-state p {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.1rem;
+    max-width: 220px;
+    line-height: 1.6;
+  }
+  .book-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .book-card {
+    background: #fff;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition);
+    position: relative;
+  }
+  .book-card:active { transform: scale(0.97); box-shadow: var(--shadow-md); }
+  .book-card-cover {
+    width: 100%; aspect-ratio: 2/3;
+    background: var(--cream-dk);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .book-card-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .book-card-cover .no-cover {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    color: var(--sepia);
+    opacity: 0.4;
+  }
+  .book-card-status {
+    position: absolute; top: 8px; left: 8px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .status-reading  { background: var(--amber);   color: #fff; }
+  .status-finished { background: var(--sage);    color: #fff; }
+  .status-want     { background: var(--fog-md);  color: var(--ink-soft); }
+  .book-card-info { padding: 10px 10px 12px; }
+  .book-card-title {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 2px;
+    color: var(--ink);
+  }
+  .book-card-author {
+    font-size: 0.75rem;
+    color: var(--sepia);
+    margin-bottom: 6px;
+  }
+  .book-card-mood { font-size: 1.2rem; }
+
+  /* ============================================================
+     ADD BOOK FORM
+  ============================================================ */
+  #view-add .content {
+    padding: 24px 20px 100px;
+    flex: 1;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .cover-picker {
+    width: 140px; height: 200px;
+    margin: 0 auto;
+    border-radius: var(--radius);
+    border: 2px dashed var(--amber);
+    background: var(--cream);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    transition: background var(--transition);
+  }
+  .cover-picker:active { background: var(--cream-dk); }
+  .cover-picker img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .cover-picker .placeholder { display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+  .cover-picker .placeholder span { font-size: 1.8rem; }
+  .cover-picker .placeholder p { font-size: 0.78rem; color: var(--sepia); text-align: center; line-height: 1.4; }
+  #cover-input { display: none; }
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--sepia);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .field-input {
+    background: var(--cream);
+    border: 1.5px solid var(--cream-dk);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 1rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.18s;
+    width: 100%;
+  }
+  .field-input:focus { border-color: var(--amber); background: #fff; }
+  .status-toggle {
+    display: flex; gap: 8px;
+  }
+  .status-pill {
+    flex: 1; padding: 10px;
+    border-radius: 50px; border: 1.5px solid var(--fog-md);
+    font-size: 0.82rem; font-weight: 700;
+    text-align: center; cursor: pointer;
+    color: var(--ink-soft);
+    background: var(--paper);
+    transition: all 0.18s;
+  }
+  .status-pill.active { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+
+  /* ============================================================
+     BOOK DETAIL
+  ============================================================ */
+  #view-detail .hero {
+    width: 100%; background: var(--ink);
+    padding: 28px 20px 24px;
+    display: flex; gap: 18px; align-items: flex-end;
+    position: relative;
+  }
+  .hero-cover {
+    width: 100px; height: 148px;
+    border-radius: 8px; overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    flex-shrink: 0;
+    background: var(--ink-soft);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hero-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .hero-cover .no-cover { font-size: 2.5rem; }
+  .hero-info { flex: 1; }
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--cream);
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+  .hero-author { font-size: 0.9rem; color: var(--amber-lt); margin-bottom: 12px; }
+  #view-detail .content {
+    padding: 0 0 100px;
+    flex: 1;
+  }
+  .section {
+    padding: 20px 20px 8px;
+    border-bottom: 1px solid var(--fog);
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    font-style: italic;
+    color: var(--sepia);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after {
+    content: ''; flex: 1;
+    height: 1px; background: var(--fog-md);
+  }
+
+  /* Status toggle in detail */
+  .detail-status-row {
+    display: flex; align-items: center;
+    gap: 10px; flex-wrap: wrap;
+  }
+
+  /* Journey check-ins */
+  .journey-list { display: flex; flex-direction: column; gap: 10px; }
+  .checkin-card {
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .checkin-emoji { font-size: 1.6rem; flex-shrink: 0; }
+  .checkin-body { flex: 1; }
+  .checkin-stage {
+    font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--amber); margin-bottom: 2px;
+  }
+  .checkin-note { font-size: 0.9rem; color: var(--ink-soft); }
+  .checkin-time { font-size: 0.72rem; color: var(--sepia); margin-top: 4px; }
+
+  /* Memory section */
+  .memory-block { display: flex; flex-direction: column; gap: 14px; padding-bottom: 8px; }
+  .memory-field textarea {
+    width: 100%;
+    background: var(--cream);
+    border: 1.5px solid var(--cream-dk);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 0.92rem;
+    color: var(--ink);
+    outline: none;
+    resize: none;
+    min-height: 72px;
+    transition: border-color 0.18s;
+    line-height: 1.5;
+  }
+  .memory-field textarea:focus { border-color: var(--amber); background: #fff; }
+  .memory-field-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--sepia);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 6px;
+  }
+
+  /* AI Summary */
+  .ai-box {
+    margin: 16px 0 8px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1.5px solid var(--amber);
+  }
+  .ai-box-header {
+    background: var(--amber);
+    color: #fff;
+    padding: 10px 16px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ai-content { padding: 14px 16px; background: #fffdf8; }
+  .ai-section-title {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 12px 0 4px;
+  }
+  .ai-section-title:first-child { margin-top: 0; }
+  .ai-section-body { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.6; }
+  .ai-section-body ul { padding-left: 18px; }
+  .ai-section-body li { margin-bottom: 2px; }
+  .ai-loading {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; padding: 24px; color: var(--sepia);
+    font-style: italic; font-size: 0.92rem;
+  }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 2.5px solid var(--cream-dk);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ai-editable textarea {
+    width: 100%;
+    background: var(--cream);
+    border: 1.5px solid var(--cream-dk);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 0.88rem;
+    color: var(--ink);
+    resize: none;
+    outline: none;
+    min-height: 220px;
+    line-height: 1.6;
+    transition: border-color 0.18s;
+  }
+  .ai-editable textarea:focus { border-color: var(--amber); }
+
+  /* ============================================================
+     ADD CHECK-IN
+  ============================================================ */
+  #view-checkin .content {
+    padding: 28px 20px 100px;
+    display: flex; flex-direction: column; gap: 22px;
+    flex: 1;
+  }
+  .emoji-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+  .emoji-btn {
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    background: var(--cream);
+    font-size: 1.6rem;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid transparent;
+    transition: transform var(--transition), border-color 0.18s;
+  }
+  .emoji-btn:active { transform: scale(0.92); }
+  .emoji-btn.selected { border-color: var(--amber); background: #fffbe8; }
+  .stage-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .stage-btn {
+    padding: 11px 6px;
+    border-radius: 50px;
+    background: var(--cream);
+    border: 1.5px solid transparent;
+    font-size: 0.8rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    transition: all 0.18s;
+  }
+  .stage-btn.selected { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+
+  /* ============================================================
+     SHARE MODAL
+  ============================================================ */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(26,20,16,0.65);
+    backdrop-filter: blur(4px);
+    align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: var(--paper);
+    width: 100%; border-radius: var(--radius) var(--radius) 0 0;
+    padding: 24px 20px 40px;
+    animation: slideUp 0.3s cubic-bezier(0.34,1.1,0.64,1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal-handle {
+    width: 40px; height: 4px; background: var(--fog-md);
+    border-radius: 2px; margin: 0 auto 20px;
+  }
+  .share-preview {
+    background: var(--cream);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .share-cover {
+    width: 70px; height: 100px; border-radius: 6px;
+    overflow: hidden; flex-shrink: 0;
+    background: var(--cream-dk);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .share-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .share-text { flex: 1; }
+  .share-title {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .share-author { font-size: 0.82rem; color: var(--sepia); margin-bottom: 8px; }
+  .share-moods { font-size: 1.2rem; margin-bottom: 6px; }
+  .share-tag {
+    display: inline-block;
+    background: var(--ink); color: var(--cream);
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .share-actions { display: flex; gap: 10px; flex-direction: column; }
+  .share-btn {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--cream); border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-size: 0.95rem; color: var(--ink);
+    transition: background var(--transition);
+  }
+  .share-btn:active { background: var(--cream-dk); }
+  .share-btn .icon { font-size: 1.3rem; }
+
+  /* ============================================================
+     TOAST
+  ============================================================ */
+  #toast {
+    position: fixed; bottom: 100px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--cream);
+    padding: 10px 20px; border-radius: 50px;
+    font-size: 0.88rem; font-weight: 400;
+    opacity: 0; transition: all 0.3s;
+    z-index: 900; pointer-events: none;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ============================================================
+     RECOMMEND TOGGLE
+  ============================================================ */
+  .recommend-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--cream); border-radius: var(--radius-sm);
+    padding: 14px 16px; margin-bottom: 6px;
+  }
+  .recommend-label { font-size: 0.92rem; color: var(--ink-soft); font-weight: 400; }
+  .toggle-switch { position: relative; width: 46px; height: 26px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: var(--fog-md); border-radius: 13px;
+    transition: background 0.2s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; bottom: 3px; left: 3px;
+    transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  }
+  .toggle-switch input:checked + .toggle-slider { background: var(--sage); }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+  /* ============================================================
+     MOBILE SAFE AREA
+  ============================================================ */
+  @supports (padding: max(0px)) {
+    .fab { bottom: max(28px, env(safe-area-inset-bottom) + 16px); }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== HOME ===================== -->
+  <div id="view-home" class="view active">
+    <div class="topbar">
+      <h1>📚 Reading Memory</h1>
+      <button class="btn-icon" onclick="openShareModal()" title="Share" style="font-size:1.1rem">↗</button>
+    </div>
+    <div class="content" id="home-content">
+      <div class="empty-state" id="empty-state">
+        <div class="icon">📖</div>
+        <p>Your reading journey starts here. Add your first book.</p>
+      </div>
+      <div class="book-grid" id="book-grid"></div>
+    </div>
+    <button class="fab" onclick="showView('add')">＋</button>
+  </div>
+
+  <!-- ===================== ADD BOOK ===================== -->
+  <div id="view-add" class="view">
+    <div class="topbar">
+      <button class="btn-icon btn-back" onclick="showView('home')">←</button>
+      <span class="topbar-sub">New Book</span>
+    </div>
+    <div class="content">
+      <div class="cover-picker" id="cover-picker" onclick="document.getElementById('cover-input').click()">
+        <div class="placeholder" id="cover-placeholder">
+          <span>📷</span>
+          <p>Tap to add<br>cover photo</p>
+        </div>
+        <img id="cover-preview" src="" alt="" style="display:none">
+      </div>
+      <input type="file" id="cover-input" accept="image/*" capture="environment" onchange="handleCoverInput(event)">
+
+      <div class="field-group">
+        <label class="field-label">Title</label>
+        <input type="text" class="field-input" id="add-title" placeholder="Book title…">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Author</label>
+        <input type="text" class="field-input" id="add-author" placeholder="Author name…">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Status</label>
+        <div class="status-toggle">
+          <button class="status-pill active" data-status="want"     onclick="selectStatus(this)">Want to Read</button>
+          <button class="status-pill"        data-status="reading"  onclick="selectStatus(this)">Reading</button>
+          <button class="status-pill"        data-status="finished" onclick="selectStatus(this)">Finished</button>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="saveBook()" style="align-self:center; margin-top:8px">Save Book</button>
+    </div>
+  </div>
+
+  <!-- ===================== BOOK DETAIL ===================== -->
+  <div id="view-detail" class="view">
+    <div class="topbar" style="background:var(--ink); border-color: rgba(255,255,255,0.1)">
+      <button class="btn-icon btn-back" onclick="showView('home')" style="background:rgba(255,255,255,0.1); color:var(--cream)">←</button>
+      <span class="topbar-sub" style="color:var(--cream)">Book Details</span>
+      <button class="btn-icon" onclick="openShareModal()" style="background:rgba(255,255,255,0.1); color:var(--cream); font-size:1.1rem">↗</button>
+    </div>
+    <div class="hero" id="detail-hero">
+      <div class="hero-cover" id="detail-cover">
+        <span class="no-cover">📖</span>
+      </div>
+      <div class="hero-info">
+        <div class="hero-title" id="detail-title">—</div>
+        <div class="hero-author" id="detail-author">—</div>
+        <div class="detail-status-row">
+          <button class="status-pill" data-status="want"     onclick="updateBookStatus(this)" style="font-size:0.72rem; padding:6px 12px">Want</button>
+          <button class="status-pill" data-status="reading"  onclick="updateBookStatus(this)" style="font-size:0.72rem; padding:6px 12px">Reading</button>
+          <button class="status-pill" data-status="finished" onclick="updateBookStatus(this)" style="font-size:0.72rem; padding:6px 12px">Finished</button>
+        </div>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- Recommend toggle -->
+      <div class="section">
+        <div class="recommend-row">
+          <span class="recommend-label">⭐ I would recommend this book</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="detail-recommend" onchange="saveRecommend()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Reading Journey -->
+      <div class="section">
+        <div class="section-title">Reading Journey</div>
+        <div class="journey-list" id="journey-list">
+          <p style="color:var(--sepia); font-size:0.88rem; font-style:italic">No check-ins yet. How are you feeling about this book?</p>
+        </div>
+        <button class="btn-secondary" onclick="showCheckin()" style="margin-top:14px">＋ Add Check-In</button>
+      </div>
+
+      <!-- Memory Section -->
+      <div class="section">
+        <div class="section-title">My Memory</div>
+        <div class="memory-block">
+          <div class="memory-field">
+            <div class="memory-field-label">3-Bullet Summary</div>
+            <textarea id="mem-summary" placeholder="• …&#10;• …&#10;• …" rows="4" oninput="saveMemory()"></textarea>
+          </div>
+          <div class="memory-field">
+            <div class="memory-field-label">What this book felt like</div>
+            <textarea id="mem-feeling" placeholder="It felt like…" rows="3" oninput="saveMemory()"></textarea>
+          </div>
+          <div class="memory-field">
+            <div class="memory-field-label">Favourite Moment</div>
+            <textarea id="mem-fav" placeholder="The moment I loved most was…" rows="3" oninput="saveMemory()"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Summary (shown when finished) -->
+      <div class="section" id="ai-section" style="display:none">
+        <div class="section-title">AI Summary</div>
+        <div id="ai-result-area"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px">
+          <button class="btn-primary amber" id="btn-generate" onclick="generateAISummary()">✨ Generate My Summary</button>
+          <button class="btn-secondary" id="btn-regenerate" style="display:none" onclick="generateAISummary()">↺ Regenerate</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================== ADD CHECK-IN ===================== -->
+  <div id="view-checkin" class="view">
+    <div class="topbar">
+      <button class="btn-icon btn-back" onclick="showView('detail')">←</button>
+      <span class="topbar-sub">Quick Check-In</span>
+    </div>
+    <div class="content">
+      <div class="field-group">
+        <label class="field-label">Where are you?</label>
+        <div class="stage-grid" id="stage-grid">
+          <button class="stage-btn" data-stage="start"    onclick="selectStage(this)">Start</button>
+          <button class="stage-btn" data-stage="early"    onclick="selectStage(this)">Early</button>
+          <button class="stage-btn" data-stage="middle"   onclick="selectStage(this)">Middle</button>
+          <button class="stage-btn" data-stage="late"     onclick="selectStage(this)">Late</button>
+          <button class="stage-btn" data-stage="finished" onclick="selectStage(this)">Finished</button>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">How does it feel?</label>
+        <div class="emoji-grid" id="emoji-grid">
+          <button class="emoji-btn" data-emoji="😍" onclick="selectEmoji(this)">😍</button>
+          <button class="emoji-btn" data-emoji="😊" onclick="selectEmoji(this)">😊</button>
+          <button class="emoji-btn" data-emoji="🤔" onclick="selectEmoji(this)">🤔</button>
+          <button class="emoji-btn" data-emoji="😐" onclick="selectEmoji(this)">😐</button>
+          <button class="emoji-btn" data-emoji="😴" onclick="selectEmoji(this)">😴</button>
+          <button class="emoji-btn" data-emoji="😮" onclick="selectEmoji(this)">😮</button>
+          <button class="emoji-btn" data-emoji="😭" onclick="selectEmoji(this)">😭</button>
+          <button class="emoji-btn" data-emoji="😂" onclick="selectEmoji(this)">😂</button>
+          <button class="emoji-btn" data-emoji="😤" onclick="selectEmoji(this)">😤</button>
+          <button class="emoji-btn" data-emoji="🤩" onclick="selectEmoji(this)">🤩</button>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">One-line note (optional)</label>
+        <input type="text" class="field-input" id="checkin-note" placeholder="Just a thought…" maxlength="120">
+      </div>
+      <button class="btn-primary" onclick="saveCheckin()" style="align-self:center; margin-top:4px">Save Check-In</button>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- ===================== SHARE MODAL ===================== -->
+<div class="modal-overlay" id="share-modal" onclick="closeShareModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="share-preview" id="share-preview">
+      <div class="share-cover" id="share-cover-img">
+        <span style="font-size:2rem">📖</span>
+      </div>
+      <div class="share-text">
+        <div class="share-title" id="share-title">—</div>
+        <div class="share-author" id="share-author">—</div>
+        <div class="share-moods" id="share-moods"></div>
+        <span class="share-tag" id="share-status-tag">—</span>
+      </div>
+    </div>
+    <div class="share-actions">
+      <button class="share-btn" onclick="copyShareText()">
+        <span class="icon">📋</span> Copy to clipboard
+      </button>
+      <button class="share-btn" onclick="nativeShare()">
+        <span class="icon">↗</span> Share via…
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TOAST ===================== -->
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   STATE
+============================================================ */
+let books = JSON.parse(localStorage.getItem('rm_books') || '[]');
+let currentBookId = null;
+let tempCoverDataURL = null;
+let selectedStatus = 'want';
+let selectedStage  = null;
+let selectedEmoji  = null;
+
+/* ============================================================
+   PERSISTENCE
+============================================================ */
+function save() {
+  localStorage.setItem('rm_books', JSON.stringify(books));
+}
+
+function getBook(id) {
+  return books.find(b => b.id === id);
+}
+
+/* ============================================================
+   VIEWS
+============================================================ */
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  if (name === 'home')   renderHome();
+  if (name === 'detail') renderDetail();
+  window.scrollTo(0, 0);
+}
+
+/* ============================================================
+   TOAST
+============================================================ */
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   HOME
+============================================================ */
+function renderHome() {
+  const grid = document.getElementById('book-grid');
+  const empty = document.getElementById('empty-state');
+  grid.innerHTML = '';
+  if (books.length === 0) {
+    empty.style.display = 'flex';
+    grid.style.display  = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.style.display  = 'grid';
+
+  books.forEach(book => {
+    const lastMood = book.checkins && book.checkins.length
+      ? book.checkins[book.checkins.length - 1].emoji : '';
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.onclick = () => { currentBookId = book.id; showView('detail'); };
+    card.innerHTML = `
+      <div class="book-card-cover">
+        ${book.cover
+          ? `<img src="${book.cover}" alt="">`
+          : `<span class="no-cover">📖</span>`}
+        <span class="book-card-status status-${book.status}">${statusLabel(book.status)}</span>
+      </div>
+      <div class="book-card-info">
+        <div class="book-card-title">${esc(book.title) || 'Untitled'}</div>
+        <div class="book-card-author">${esc(book.author) || ''}</div>
+        ${lastMood ? `<div class="book-card-mood">${lastMood}</div>` : ''}
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function statusLabel(s) {
+  return { want:'Want to Read', reading:'Reading', finished:'Finished' }[s] || s;
+}
+
+/* ============================================================
+   ADD BOOK
+============================================================ */
+function handleCoverInput(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    tempCoverDataURL = ev.target.result;
+    const img = document.getElementById('cover-preview');
+    img.src = tempCoverDataURL;
+    img.style.display = 'block';
+    document.getElementById('cover-placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function selectStatus(btn) {
+  document.querySelectorAll('#view-add .status-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedStatus = btn.dataset.status;
+}
+
+function saveBook() {
+  const title  = document.getElementById('add-title').value.trim();
+  const author = document.getElementById('add-author').value.trim();
+  if (!title) { toast('Please enter a title'); return; }
+  const book = {
+    id: Date.now().toString(),
+    title, author,
+    cover: tempCoverDataURL || null,
+    status: selectedStatus,
+    recommend: false,
+    checkins: [],
+    memory: { summary:'', feeling:'', fav:'' },
+    aiSummary: null,
+    createdAt: Date.now()
+  };
+  books.unshift(book);
+  save();
+  // reset form
+  document.getElementById('add-title').value  = '';
+  document.getElementById('add-author').value = '';
+  document.getElementById('cover-preview').style.display = 'none';
+  document.getElementById('cover-placeholder').style.display = 'flex';
+  tempCoverDataURL = null;
+  selectedStatus = 'want';
+  document.querySelectorAll('#view-add .status-pill').forEach((b,i) => b.classList.toggle('active', i===0));
+  currentBookId = book.id;
+  toast('Book added!');
+  showView('detail');
+}
+
+/* ============================================================
+   DETAIL
+============================================================ */
+function renderDetail() {
+  const book = getBook(currentBookId);
+  if (!book) return;
+
+  document.getElementById('detail-title').textContent  = book.title  || 'Untitled';
+  document.getElementById('detail-author').textContent = book.author || '';
+
+  // cover
+  const coverEl = document.getElementById('detail-cover');
+  coverEl.innerHTML = book.cover
+    ? `<img src="${book.cover}" alt="">`
+    : `<span class="no-cover">📖</span>`;
+
+  // status pills
+  document.querySelectorAll('#view-detail .detail-status-row .status-pill').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.status === book.status);
+  });
+
+  // recommend
+  document.getElementById('detail-recommend').checked = !!book.recommend;
+
+  // journey
+  renderJourney(book);
+
+  // memory
+  document.getElementById('mem-summary').value = book.memory?.summary || '';
+  document.getElementById('mem-feeling').value  = book.memory?.feeling || '';
+  document.getElementById('mem-fav').value       = book.memory?.fav     || '';
+
+  // AI section
+  const aiSec = document.getElementById('ai-section');
+  aiSec.style.display = book.status === 'finished' ? 'block' : 'none';
+  if (book.status === 'finished') renderAISection(book);
+}
+
+function renderJourney(book) {
+  const list = document.getElementById('journey-list');
+  if (!book.checkins || !book.checkins.length) {
+    list.innerHTML = `<p style="color:var(--sepia); font-size:0.88rem; font-style:italic">No check-ins yet. How are you feeling about this book?</p>`;
+    return;
+  }
+  list.innerHTML = [...book.checkins].reverse().map(c => `
+    <div class="checkin-card">
+      <div class="checkin-emoji">${c.emoji}</div>
+      <div class="checkin-body">
+        <div class="checkin-stage">${c.stage}</div>
+        ${c.note ? `<div class="checkin-note">${esc(c.note)}</div>` : ''}
+        <div class="checkin-time">${fmtDate(c.ts)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function updateBookStatus(btn) {
+  const book = getBook(currentBookId);
+  if (!book) return;
+  book.status = btn.dataset.status;
+  save();
+  document.querySelectorAll('#view-detail .detail-status-row .status-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.status === book.status);
+  });
+  const aiSec = document.getElementById('ai-section');
+  aiSec.style.display = book.status === 'finished' ? 'block' : 'none';
+  if (book.status === 'finished') renderAISection(book);
+  toast('Status updated');
+}
+
+function saveRecommend() {
+  const book = getBook(currentBookId);
+  if (!book) return;
+  book.recommend = document.getElementById('detail-recommend').checked;
+  save();
+}
+
+function saveMemory() {
+  const book = getBook(currentBookId);
+  if (!book) return;
+  book.memory = {
+    summary: document.getElementById('mem-summary').value,
+    feeling: document.getElementById('mem-feeling').value,
+    fav:     document.getElementById('mem-fav').value
+  };
+  save();
+}
+
+/* ============================================================
+   CHECK-IN
+============================================================ */
+function showCheckin() {
+  selectedStage = null;
+  selectedEmoji = null;
+  document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('checkin-note').value = '';
+  showView('checkin');
+}
+
+function selectStage(btn) {
+  document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedStage = btn.dataset.stage;
+}
+
+function selectEmoji(btn) {
+  document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedEmoji = btn.dataset.emoji;
+}
+
+function saveCheckin() {
+  if (!selectedStage) { toast('Pick a stage'); return; }
+  if (!selectedEmoji) { toast('Pick a mood'); return; }
+  const book = getBook(currentBookId);
+  if (!book) return;
+  book.checkins.push({
+    id: Date.now().toString(),
+    stage: selectedStage,
+    emoji: selectedEmoji,
+    note:  document.getElementById('checkin-note').value.trim(),
+    ts: Date.now()
+  });
+  save();
+  toast('Check-in saved!');
+  showView('detail');
+}
+
+/* ============================================================
+   AI SUMMARY
+============================================================ */
+function renderAISection(book) {
+  const area = document.getElementById('ai-result-area');
+  const btnRegen = document.getElementById('btn-regenerate');
+  const btnGen   = document.getElementById('btn-generate');
+  if (book.aiSummary) {
+    btnGen.style.display = 'none';
+    btnRegen.style.display = 'inline-flex';
+    area.innerHTML = `
+      <div class="ai-box">
+        <div class="ai-box-header">✨ Your Reading Summary</div>
+        <div class="ai-content" id="ai-content-display">
+          ${renderAISummaryHTML(book.aiSummary)}
+        </div>
+      </div>
+      <button class="btn-secondary" onclick="editAISummary()" style="margin-top:10px">✏️ Edit Summary</button>`;
+  } else {
+    btnGen.style.display   = 'inline-flex';
+    btnRegen.style.display = 'none';
+    area.innerHTML = '';
+  }
+}
+
+function renderAISummaryHTML(text) {
+  // Parse sections from AI output
+  const sections = text.split(/\n(?=##? )/g);
+  return sections.map(s => {
+    const lines = s.trim().split('\n');
+    const heading = lines[0].replace(/^#+\s*/, '');
+    const body = lines.slice(1).join('\n').trim();
+    const bodyHTML = body
+      .split('\n')
+      .map(l => l.startsWith('- ') || l.startsWith('• ')
+        ? `<li>${esc(l.replace(/^[-•]\s*/, ''))}</li>`
+        : `<p>${esc(l)}</p>`)
+      .join('');
+    const hasBullets = body.match(/^[-•]/m);
+    return `<div class="ai-section-title">${esc(heading)}</div>
+            <div class="ai-section-body">${hasBullets ? `<ul>${bodyHTML}</ul>` : bodyHTML}</div>`;
+  }).join('');
+}
+
+function editAISummary() {
+  const book = getBook(currentBookId);
+  if (!book) return;
+  const area = document.getElementById('ai-result-area');
+  area.innerHTML = `
+    <div class="ai-editable">
+      <textarea id="ai-edit-ta" oninput="autoResizeTA(this)">${book.aiSummary || ''}</textarea>
+    </div>
+    <button class="btn-primary sage" onclick="saveAISummary()" style="margin-top:12px">Save</button>`;
+  autoResizeTA(document.getElementById('ai-edit-ta'));
+}
+
+function saveAISummary() {
+  const book = getBook(currentBookId);
+  if (!book) return;
+  book.aiSummary = document.getElementById('ai-edit-ta').value;
+  save();
+  renderAISection(book);
+  toast('Summary saved');
+}
+
+function autoResizeTA(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+async function generateAISummary() {
+  const book = getBook(currentBookId);
+  if (!book) return;
+
+  const area    = document.getElementById('ai-result-area');
+  const btnGen  = document.getElementById('btn-generate');
+  const btnRegen= document.getElementById('btn-regenerate');
+  btnGen.style.display   = 'none';
+  btnRegen.style.display = 'none';
+
+  area.innerHTML = `
+    <div class="ai-box">
+      <div class="ai-box-header">✨ Generating your summary…</div>
+      <div class="ai-loading">
+        <div class="spinner"></div>
+        <span>Reading your journey…</span>
+      </div>
+    </div>`;
+
+  const checkinsText = (book.checkins || []).map(c =>
+    `Stage: ${c.stage} | Mood: ${c.emoji} | Note: ${c.note || '(none)'}`
+  ).join('\n');
+
+  const memText = `3-bullet summary: ${book.memory?.summary || 'none'}\nFelt like: ${book.memory?.feeling || 'none'}\nFavourite moment: ${book.memory?.fav || 'none'}`;
+
+  const prompt = `You are helping a reader reflect on a book they just finished. Generate a personal reading summary based ONLY on the check-ins and notes below. Do NOT use any outside knowledge about the book.
+
+Book: "${book.title}" by ${book.author || 'unknown author'}
+Recommended by reader: ${book.recommend ? 'Yes' : 'No'}
+
+Check-ins during reading:
+${checkinsText || '(none recorded)'}
+
+Reader's own memory notes:
+${memText}
+
+Generate a warm, personal summary with EXACTLY these four sections (use ## headings):
+## What this book was about
+(2-3 sentences based on clues in their notes)
+
+## How it felt for me
+(reflect the emotional arc from mood emojis and notes — be specific, not generic)
+
+## What I liked
+- bullet points from positive notes and high-mood check-ins
+
+## What I didn't like
+- bullet points from negative notes or low-mood check-ins, or "Nothing to note" if all positive
+
+Keep it concise, warm, and personal — like the reader wrote it themselves. Avoid generic book descriptions.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || '';
+    book.aiSummary = text;
+    save();
+    renderAISection(book);
+    toast('Summary generated!');
+  } catch (err) {
+    area.innerHTML = `<p style="color:var(--rose); font-size:0.9rem; padding:12px">Could not generate summary. Please try again.</p>`;
+    btnGen.style.display = book.aiSummary ? 'none' : 'inline-flex';
+    btnRegen.style.display = book.aiSummary ? 'inline-flex' : 'none';
+  }
+}
+
+/* ============================================================
+   SHARE
+============================================================ */
+function openShareModal() {
+  const book = currentBookId ? getBook(currentBookId) : null;
+  if (!book) {
+    toast('Open a book to share');
+    return;
+  }
+  const moods = (book.checkins || []).map(c => c.emoji).filter(Boolean);
+  const unique = [...new Set(moods)].slice(-6);
+
+  document.getElementById('share-title').textContent  = book.title || 'Untitled';
+  document.getElementById('share-author').textContent = book.author || '';
+  document.getElementById('share-moods').textContent  = unique.join(' ');
+  document.getElementById('share-status-tag').textContent = statusLabel(book.status);
+
+  const coverEl = document.getElementById('share-cover-img');
+  coverEl.innerHTML = book.cover
+    ? `<img src="${book.cover}" alt="" style="width:100%; height:100%; object-fit:cover">`
+    : `<span style="font-size:2rem">📖</span>`;
+
+  document.getElementById('share-modal').classList.add('open');
+}
+
+function closeShareModal(e) {
+  if (e.target === document.getElementById('share-modal'))
+    document.getElementById('share-modal').classList.remove('open');
+}
+
+function buildShareText() {
+  const book = getBook(currentBookId);
+  if (!book) return '';
+  const moods = [...new Set((book.checkins || []).map(c => c.emoji))].join(' ');
+  const rec   = book.recommend ? '⭐ Recommended' : '';
+  return `📚 "${book.title}"${book.author ? ' by ' + book.author : ''}\n${statusLabel(book.status)} ${moods}\n${rec}${book.memory?.feeling ? '\n"' + book.memory.feeling + '"' : ''}`;
+}
+
+function copyShareText() {
+  navigator.clipboard.writeText(buildShareText()).then(() => {
+    toast('Copied to clipboard!');
+    document.getElementById('share-modal').classList.remove('open');
+  });
+}
+
+function nativeShare() {
+  const book = getBook(currentBookId);
+  if (navigator.share) {
+    navigator.share({
+      title: book?.title || 'Reading Memory',
+      text:  buildShareText()
+    }).catch(() => {});
+  } else {
+    copyShareText();
+  }
+  document.getElementById('share-modal').classList.remove('open');
+}
+
+/* ============================================================
+   UTILS
+============================================================ */
+function esc(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
+    + ' · ' + d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+renderHome();
+</script>
+</body>
+</html>
