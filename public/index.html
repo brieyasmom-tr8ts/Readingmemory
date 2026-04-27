@@ -138,12 +138,15 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .spoiler-body{overflow:hidden;max-height:0;transition:max-height .3s ease}
 .spoiler-body.open{max-height:500px}
 .spoiler-blur{filter:blur(6px);transition:filter .2s;cursor:pointer}
-.spoiler-blur:focus,.spoiler-blur.revealed{filter:none}
+.spoiler-blur.revealed{filter:none}
 .note-cards{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .note-card{background:var(--cream);border-radius:var(--radius-sm);padding:12px 14px;position:relative;font-size:.88rem;color:var(--ink-soft);line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .note-card .note-card-ts{font-size:.65rem;color:var(--sepia);margin-top:6px;opacity:.6}
-.note-card .note-card-del{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--fog);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--rose);opacity:0;transition:opacity .2s}
-.note-card:hover .note-card-del,.note-card:active .note-card-del{opacity:1}
+.note-card-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .2s}
+.note-card:hover .note-card-actions,.note-card:active .note-card-actions{opacity:1}
+.note-card-btn{width:26px;height:26px;border-radius:50%;background:var(--fog);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--sepia);transition:background .15s}
+.note-card-btn:active{background:var(--fog-md)}
+.note-card-btn.del{color:var(--rose)}
 .note-add-row{display:flex;gap:8px;align-items:flex-end}
 .note-add-row textarea{flex:1}
 .note-add-row .btn-save-note{padding:10px 18px;border-radius:50px;background:var(--ink);color:var(--cream);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;align-self:flex-end}
@@ -404,13 +407,13 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
       <div class="section" id="spoiler-section" style="display:none">
         <div class="section-title spoiler-toggle" onclick="toggleSpoilers()"><span class="arrow" id="spoiler-arrow">&#x25B6;</span> Spoilers &amp; Key Moments</div>
         <div class="spoiler-body" id="spoiler-body">
-          <div class="field-group">
-            <label class="field-label">The twists, reveals, and moments you'll want to remember</label>
-            <div class="field-with-mic">
-              <textarea class="field-input spoiler-blur" id="note-spoilers" placeholder="No peeking! Write the parts that made this book unforgettable..." rows="4" oninput="saveSpoilers()" onfocus="this.classList.add('revealed')" onblur="if(!this.value)this.classList.remove('revealed')"></textarea>
+          <div class="note-cards spoiler-blur" id="spoiler-cards"></div>
+          <div class="note-add-row">
+            <div class="field-with-mic" style="flex:1">
+              <textarea class="field-input" id="note-spoilers" placeholder="The twists and moments you'll want to remember..." rows="2"></textarea>
               <button class="mic-btn" onclick="toggleMic('note-spoilers')" title="Voice input">&#x1f399;</button>
             </div>
-            <div class="save-indicator" id="save-spoilers"></div>
+            <button class="btn-save-note" onclick="addNote('spoilers')">Save</button>
           </div>
         </div>
       </div>
@@ -792,7 +795,7 @@ function renderDetail(){
   // Spoilers — show for reading and finished
   const showSpoilers=b.status==='reading'||b.status==='finished';
   document.getElementById('spoiler-section').style.display=showSpoilers?'':'none';
-  if(showSpoilers){document.getElementById('note-spoilers').value=b.spoilers||'';if(b.spoilers)document.getElementById('note-spoilers').classList.add('revealed');}
+  if(showSpoilers){renderNoteCards('spoilers',b);document.getElementById('note-spoilers').value='';}
 }
 
 function renderRating(b){
@@ -834,13 +837,15 @@ function renderJourney(b){
 async function updateStatus(btn){const b=getBook(currentBookId);if(!b)return;b.status=btn.dataset.status;if(b.status==='reading'&&!b.startedAt)b.startedAt=Date.now();if(b.status==='finished'&&!b.finishedAt)b.finishedAt=Date.now();if(b.status!=='finished')b.finishedAt=null;renderDetail();toast('Status updated');await apiSaveBook(b);}
 async function saveRecommend(){const b=getBook(currentBookId);if(!b)return;b.recommend=document.getElementById('detail-recommend').checked;await apiSaveBook(b);}
 function parseNotes(raw){if(!raw)return[];if(typeof raw==='string'){try{const p=JSON.parse(raw);if(Array.isArray(p))return p;}catch(e){}return raw.trim()?[{id:Date.now().toString(),text:raw,ts:Date.now()}]:[];}return[];}
-function renderNoteCards(type,b){const list=type==='about'?parseNotes(b.notes?.about):parseNotes(b.notes?.final);const container=document.getElementById(type+'-cards');container.innerHTML=list.map(n=>`<div class="note-card"><div>${esc(n.text)}</div><div class="note-card-ts">${shortDate(n.ts)}</div><button class="note-card-del" onclick="deleteNote('${type}','${n.id}')" title="Delete">&#x2715;</button></div>`).join('');}
-async function addNote(type){const b=getBook(currentBookId);if(!b)return;const el=document.getElementById('note-'+type);const text=el.value.trim();if(!text){toast('Write something first');return;}const notes=parseNotes(type==='about'?b.notes?.about:b.notes?.final);notes.push({id:Date.now().toString(),text,ts:Date.now()});if(!b.notes)b.notes={about:'',final:''};if(type==='about')b.notes.about=JSON.stringify(notes);else b.notes.final=JSON.stringify(notes);el.value='';renderNoteCards(type,b);toast('Note saved');await apiSaveBook(b);}
-async function deleteNote(type,id){const b=getBook(currentBookId);if(!b)return;let notes=parseNotes(type==='about'?b.notes?.about:b.notes?.final);notes=notes.filter(n=>n.id!==id);if(!b.notes)b.notes={about:'',final:''};if(type==='about')b.notes.about=JSON.stringify(notes);else b.notes.final=JSON.stringify(notes);renderNoteCards(type,b);toast('Note deleted');await apiSaveBook(b);}
+function getNotesRaw(type,b){if(type==='about')return b.notes?.about;if(type==='final')return b.notes?.final;if(type==='spoilers')return b.spoilers;return'';}
+function setNotesRaw(type,b,val){if(!b.notes)b.notes={about:'',final:''};if(type==='about')b.notes.about=val;else if(type==='final')b.notes.final=val;else if(type==='spoilers')b.spoilers=val;}
+function renderNoteCards(type,b){const list=parseNotes(getNotesRaw(type,b));const container=document.getElementById(type+'-cards');container.innerHTML=list.map(n=>`<div class="note-card" id="nc-${n.id}"><div class="note-card-text">${esc(n.text)}</div><div class="note-card-ts">${shortDate(n.ts)}</div><div class="note-card-actions"><button class="note-card-btn" onclick="editNote('${type}','${n.id}')" title="Edit">&#x270E;</button><button class="note-card-btn del" onclick="deleteNote('${type}','${n.id}')" title="Delete">&#x2715;</button></div></div>`).join('');}
+async function addNote(type){const b=getBook(currentBookId);if(!b)return;const el=document.getElementById('note-'+type);const text=el.value.trim();if(!text){toast('Write something first');return;}const notes=parseNotes(getNotesRaw(type,b));notes.push({id:Date.now().toString(),text,ts:Date.now()});setNotesRaw(type,b,JSON.stringify(notes));el.value='';renderNoteCards(type,b);toast('Note saved');await apiSaveBook(b);}
+function editNote(type,id){const b=getBook(currentBookId);if(!b)return;const notes=parseNotes(getNotesRaw(type,b));const n=notes.find(x=>x.id===id);if(!n)return;const card=document.getElementById('nc-'+id);card.innerHTML=`<textarea class="field-input" id="edit-${id}" rows="3">${esc(n.text)}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn-save-note" onclick="saveEditNote('${type}','${id}')">Save</button><button class="btn-secondary" style="padding:8px 14px;font-size:.78rem" onclick="renderNoteCards('${type}',getBook(currentBookId))">Cancel</button></div>`;document.getElementById('edit-'+id).focus();}
+async function saveEditNote(type,id){const b=getBook(currentBookId);if(!b)return;const notes=parseNotes(getNotesRaw(type,b));const n=notes.find(x=>x.id===id);if(!n)return;const text=document.getElementById('edit-'+id).value.trim();if(!text){toast('Note can\'t be empty');return;}n.text=text;setNotesRaw(type,b,JSON.stringify(notes));renderNoteCards(type,b);toast('Note updated');await apiSaveBook(b);}
+async function deleteNote(type,id){const b=getBook(currentBookId);if(!b)return;let notes=parseNotes(getNotesRaw(type,b));notes=notes.filter(n=>n.id!==id);setNotesRaw(type,b,JSON.stringify(notes));renderNoteCards(type,b);toast('Note deleted');await apiSaveBook(b);}
 async function saveDate(which){const b=getBook(currentBookId);if(!b)return;const el=document.getElementById(which==='started'?'date-started':'date-finished');const val=el.value?new Date(el.value+'T12:00:00').getTime():null;if(which==='started')b.startedAt=val;else b.finishedAt=val;await apiSaveBook(b);toast('Date updated');}
-function toggleSpoilers(){const body=document.getElementById('spoiler-body');const arrow=document.getElementById('spoiler-arrow');body.classList.toggle('open');arrow.classList.toggle('open');}
-let spoilerTimer;
-function saveSpoilers(){const b=getBook(currentBookId);if(!b)return;b.spoilers=document.getElementById('note-spoilers').value;clearTimeout(spoilerTimer);document.getElementById('save-spoilers').textContent='Saving...';spoilerTimer=setTimeout(async()=>{await apiSaveBook(b);document.getElementById('save-spoilers').textContent='Saved';setTimeout(()=>{document.getElementById('save-spoilers').textContent='';},2000);},1000);}
+function toggleSpoilers(){const body=document.getElementById('spoiler-body');const arrow=document.getElementById('spoiler-arrow');body.classList.toggle('open');arrow.classList.toggle('open');document.getElementById('spoiler-cards').classList.toggle('revealed');}
 async function confirmDeleteBook(){const b=getBook(currentBookId);if(!b)return;showConfirm(`Delete "${b.title}"?`,async()=>{books=books.filter(x=>x.id!==currentBookId);toast('Book deleted');showView('home');await apiDeleteBook(currentBookId);currentBookId=null;});}
 
 /* === ENTRIES === */
