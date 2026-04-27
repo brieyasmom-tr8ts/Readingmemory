@@ -15,7 +15,7 @@ export async function onRequestPut(context) {
   await env.DB.prepare(`
     UPDATE books SET title=?, author=?, cover=?, status=?, category=?, sub_category=?,
       recommended_by=?, recommend=?, notes_about=?, notes_final=?, ai_summary=?,
-      started_at=?, finished_at=?, rating=?, source=?
+      started_at=?, finished_at=?, rating=?, source=?, spoilers=?
     WHERE id=? AND user_id=?
   `).bind(
     body.title, body.author || '', body.cover || null,
@@ -23,7 +23,7 @@ export async function onRequestPut(context) {
     body.recommendedBy || '', body.recommend ? 1 : 0,
     body.notes?.about || '', body.notes?.final || '', body.aiSummary || null,
     body.startedAt || null, body.finishedAt || null,
-    body.rating || null, body.source || '',
+    body.rating || null, body.source || '', body.spoilers || '',
     bookId, userId
   ).run();
 

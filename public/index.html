@@ -128,7 +128,25 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 .hero-title{font-family:var(--font-display);font-size:1.4rem;font-weight:700;color:var(--cream);line-height:1.3;margin-bottom:4px}
 .hero-author{font-size:.9rem;color:var(--amber-lt);margin-bottom:4px}
 .hero-cat{font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:4px}
-.hero-dates{font-size:.68rem;color:rgba(255,255,255,.4);margin-bottom:8px}
+.hero-dates{font-size:.72rem;color:rgba(255,255,255,.5);margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.hero-dates label{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;opacity:.6}
+.hero-dates input[type="date"]{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;font-size:.72rem;padding:3px 8px;font-family:var(--font-body);color-scheme:dark}
+.hero-dates input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.5}
+.spoiler-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.spoiler-toggle .arrow{transition:transform .2s;font-size:.8rem}
+.spoiler-toggle .arrow.open{transform:rotate(90deg)}
+.spoiler-body{overflow:hidden;max-height:0;transition:max-height .3s ease}
+.spoiler-body.open{max-height:500px}
+.spoiler-blur{filter:blur(6px);transition:filter .2s;cursor:pointer}
+.spoiler-blur:focus,.spoiler-blur.revealed{filter:none}
+.note-cards{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.note-card{background:var(--cream);border-radius:var(--radius-sm);padding:12px 14px;position:relative;font-size:.88rem;color:var(--ink-soft);line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.note-card .note-card-ts{font-size:.65rem;color:var(--sepia);margin-top:6px;opacity:.6}
+.note-card .note-card-del{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--fog);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--rose);opacity:0;transition:opacity .2s}
+.note-card:hover .note-card-del,.note-card:active .note-card-del{opacity:1}
+.note-add-row{display:flex;gap:8px;align-items:flex-end}
+.note-add-row textarea{flex:1}
+.note-add-row .btn-save-note{padding:10px 18px;border-radius:50px;background:var(--ink);color:var(--cream);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;align-self:flex-end}
 .hero-status-row{display:flex;gap:8px;flex-wrap:wrap}
 .hero-status-row .pill{font-size:.72rem;padding:6px 12px;color:rgba(255,255,255,.6);background:transparent;border-color:rgba(255,255,255,.2)}
 .hero-status-row .pill.active{background:var(--amber);color:#fff;border-color:var(--amber)}
@@ -334,7 +352,10 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
         <div class="hero-title" id="detail-title">-</div>
         <div class="hero-author" id="detail-author">-</div>
         <div class="hero-cat" id="detail-cat"></div>
-        <div class="hero-dates" id="detail-dates"></div>
+        <div class="hero-dates" id="detail-dates">
+          <div><label>Started</label><br><input type="date" id="date-started" onchange="saveDate('started')"></div>
+          <div><label>Finished</label><br><input type="date" id="date-finished" onchange="saveDate('finished')"></div>
+        </div>
         <div class="hero-status-row" id="detail-status-row">
           <button class="pill" data-status="want" onclick="updateStatus(this)">Want</button>
           <button class="pill" data-status="reading" onclick="updateStatus(this)">Reading</button>
@@ -360,22 +381,36 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
       </div>
       <div class="section">
         <div class="section-title">My Notes</div>
-        <div class="notes-block">
-          <div class="field-group">
-            <label class="field-label">What's this book about?</label>
-            <div class="field-with-mic">
-              <textarea class="field-input" id="note-about" placeholder="Brief description so you remember later..." rows="3" oninput="saveNotes()"></textarea>
-              <button class="mic-btn" onclick="toggleMic('note-about')" title="Voice input">&#x1f399;</button>
-            </div>
-            <div class="save-indicator" id="save-about"></div>
+        <div class="note-cards" id="about-cards"></div>
+        <div class="note-add-row">
+          <div class="field-with-mic" style="flex:1">
+            <textarea class="field-input" id="note-about" placeholder="What's this book about? Add a note..." rows="2"></textarea>
+            <button class="mic-btn" onclick="toggleMic('note-about')" title="Voice input">&#x1f399;</button>
           </div>
-          <div class="field-group" id="final-thoughts-group" style="display:none">
-            <label class="field-label">Final Thoughts</label>
+          <button class="btn-save-note" onclick="addNote('about')">Save</button>
+        </div>
+      </div>
+      <div class="section" id="final-thoughts-group" style="display:none">
+        <div class="section-title">Final Thoughts</div>
+        <div class="note-cards" id="final-cards"></div>
+        <div class="note-add-row">
+          <div class="field-with-mic" style="flex:1">
+            <textarea class="field-input" id="note-final" placeholder="How did it end for you? Worth it?" rows="2"></textarea>
+            <button class="mic-btn" onclick="toggleMic('note-final')" title="Voice input">&#x1f399;</button>
+          </div>
+          <button class="btn-save-note" onclick="addNote('final')">Save</button>
+        </div>
+      </div>
+      <div class="section" id="spoiler-section" style="display:none">
+        <div class="section-title spoiler-toggle" onclick="toggleSpoilers()"><span class="arrow" id="spoiler-arrow">&#x25B6;</span> Spoilers &amp; Key Moments</div>
+        <div class="spoiler-body" id="spoiler-body">
+          <div class="field-group">
+            <label class="field-label">The twists, reveals, and moments you'll want to remember</label>
             <div class="field-with-mic">
-              <textarea class="field-input" id="note-final" placeholder="How did it end for you? Worth it?" rows="3" oninput="saveNotes()"></textarea>
-              <button class="mic-btn" onclick="toggleMic('note-final')" title="Voice input">&#x1f399;</button>
+              <textarea class="field-input spoiler-blur" id="note-spoilers" placeholder="No peeking! Write the parts that made this book unforgettable..." rows="4" oninput="saveSpoilers()" onfocus="this.classList.add('revealed')" onblur="if(!this.value)this.classList.remove('revealed')"></textarea>
+              <button class="mic-btn" onclick="toggleMic('note-spoilers')" title="Voice input">&#x1f399;</button>
             </div>
-            <div class="save-indicator" id="save-final"></div>
+            <div class="save-indicator" id="save-spoilers"></div>
           </div>
         </div>
       </div>
@@ -708,7 +743,7 @@ function pickSuggestion(el){document.getElementById('add-title').value=el.datase
 async function fetchBookSummary(book){
   try{
     const d=await api('book-summary',{method:'POST',body:{title:book.title,author:book.author,category:book.category&&CATEGORIES[book.category]?CATEGORIES[book.category].label:null}});
-    if(d.summary){book.notes.about=d.summary;const b=getBook(book.id);if(b){b.notes.about=d.summary;}await apiSaveBook(book);if(currentBookId===book.id){document.getElementById('note-about').value=d.summary;}toast('Book summary added!');}
+    if(d.summary){const notes=[{id:Date.now().toString(),text:d.summary,ts:Date.now()}];const val=JSON.stringify(notes);book.notes.about=val;const b=getBook(book.id);if(b){b.notes.about=val;}await apiSaveBook(book);if(currentBookId===book.id){renderNoteCards('about',book);}toast('Book summary added!');}
   }catch(x){}
 }
 async function fetchBookDescription(key){
@@ -721,7 +756,7 @@ async function fetchBookDescription(key){
 }
 function checkDuplicate(t){const a=document.getElementById('dup-area');if(!t||t.length<3){a.innerHTML='';return;}const m=books.find(b=>b.title.toLowerCase()===t.toLowerCase());if(m){const w=m.finishedAt?new Date(m.finishedAt).toLocaleDateString('en-US',{month:'short',year:'numeric'}):'';a.innerHTML=`<div class="dup-warning" style="margin-top:8px"><p><strong>You've already got this book!</strong> "${esc(m.title)}" ${w?'('+w+')':''} - ${statusLabel(m.status)}</p><button class="btn-secondary" onclick="currentBookId='${m.id}';showView('detail')">View It</button></div>`;}else a.innerHTML='';}
 
-async function saveBook(){const t=document.getElementById('add-title').value.trim(),a=document.getElementById('add-author').value.trim();if(!t){toast('Please enter a title');return;}const now=Date.now();const b={id:now.toString(),title:t,author:a,cover:tempCoverURL||null,status:addStatus,category:addCatMain||null,subCategory:addCatSub||null,source:addSource||'',recommendedBy:addStatus==='want'?document.getElementById('add-recby').value.trim():'',recommend:false,entries:[],notes:{about:pendingDescription||'',final:''},aiSummary:null,rating:null,startedAt:addStatus==='reading'?now:null,finishedAt:addStatus==='finished'?now:null,createdAt:now};pendingDescription='';
+async function saveBook(){const t=document.getElementById('add-title').value.trim(),a=document.getElementById('add-author').value.trim();if(!t){toast('Please enter a title');return;}const now=Date.now();const b={id:now.toString(),title:t,author:a,cover:tempCoverURL||null,status:addStatus,category:addCatMain||null,subCategory:addCatSub||null,source:addSource||'',recommendedBy:addStatus==='want'?document.getElementById('add-recby').value.trim():'',recommend:false,entries:[],notes:{about:pendingDescription||'',final:''},aiSummary:null,rating:null,spoilers:'',startedAt:addStatus==='reading'?now:null,finishedAt:addStatus==='finished'?now:null,createdAt:now};pendingDescription='';
   // If want-to-read and no description yet, fetch AI summary in background
   if(b.status==='want'&&!b.notes.about){fetchBookSummary(b);}books.unshift(b);currentBookId=b.id;toast('Book added!');showView('detail');await apiSaveBook(b);}
 
@@ -733,12 +768,9 @@ function renderDetail(){
   document.getElementById('detail-author').textContent=b.author||'';
   const cl=b.category&&CATEGORIES[b.category]?CATEGORIES[b.category].label:'';
   document.getElementById('detail-cat').textContent=cl+(b.subCategory?' / '+b.subCategory:'');
-  // Dates
-  let dates=[];
-  if(b.createdAt)dates.push('Added '+shortDate(b.createdAt));
-  if(b.startedAt)dates.push('Started '+shortDate(b.startedAt));
-  if(b.finishedAt)dates.push('Finished '+shortDate(b.finishedAt));
-  document.getElementById('detail-dates').textContent=dates.join(' · ');
+  // Dates — editable inputs
+  document.getElementById('date-started').value=b.startedAt?new Date(b.startedAt).toISOString().slice(0,10):'';
+  document.getElementById('date-finished').value=b.finishedAt?new Date(b.finishedAt).toISOString().slice(0,10):'';
   document.getElementById('detail-cover').innerHTML=b.cover?`<img src="${esc(b.cover)}" alt="">`:'<span class="no-cover">&#x1f4d6;</span>';
   document.querySelectorAll('#detail-status-row .pill').forEach(x=>x.classList.toggle('active',x.dataset.status===b.status));
   document.getElementById('detail-recommend').checked=!!b.recommend;
@@ -750,13 +782,17 @@ function renderDetail(){
   // Recommend banner
   renderRecommendBanner(b);
   renderJourney(b);
-  document.getElementById('note-about').value=b.notes?.about||'';
-  document.getElementById('note-final').value=b.notes?.final||'';
-  document.getElementById('save-about').textContent='';
-  document.getElementById('save-final').textContent='';
+  renderNoteCards('about',b);
+  renderNoteCards('final',b);
+  document.getElementById('note-about').value='';
+  document.getElementById('note-final').value='';
   document.getElementById('final-thoughts-group').style.display=b.status==='finished'?'':'none';
   document.getElementById('ai-section').style.display=b.status==='finished'?'':'none';
   if(b.status==='finished')renderAI(b);
+  // Spoilers — show for reading and finished
+  const showSpoilers=b.status==='reading'||b.status==='finished';
+  document.getElementById('spoiler-section').style.display=showSpoilers?'':'none';
+  if(showSpoilers){document.getElementById('note-spoilers').value=b.spoilers||'';if(b.spoilers)document.getElementById('note-spoilers').classList.add('revealed');}
 }
 
 function renderRating(b){
@@ -797,7 +833,14 @@ function renderJourney(b){
 
 async function updateStatus(btn){const b=getBook(currentBookId);if(!b)return;b.status=btn.dataset.status;if(b.status==='reading'&&!b.startedAt)b.startedAt=Date.now();if(b.status==='finished'&&!b.finishedAt)b.finishedAt=Date.now();if(b.status!=='finished')b.finishedAt=null;renderDetail();toast('Status updated');await apiSaveBook(b);}
 async function saveRecommend(){const b=getBook(currentBookId);if(!b)return;b.recommend=document.getElementById('detail-recommend').checked;await apiSaveBook(b);}
-function saveNotes(){const b=getBook(currentBookId);if(!b)return;b.notes={about:document.getElementById('note-about').value,final:document.getElementById('note-final').value};clearTimeout(noteTimer);document.getElementById('save-about').textContent='Saving...';if(document.getElementById('final-thoughts-group').style.display!=='none')document.getElementById('save-final').textContent='Saving...';noteTimer=setTimeout(async()=>{await apiSaveBook(b);document.getElementById('save-about').textContent='Saved';document.getElementById('save-final').textContent='Saved';setTimeout(()=>{document.getElementById('save-about').textContent='';document.getElementById('save-final').textContent='';},2000);},1000);}
+function parseNotes(raw){if(!raw)return[];if(typeof raw==='string'){try{const p=JSON.parse(raw);if(Array.isArray(p))return p;}catch(e){}return raw.trim()?[{id:Date.now().toString(),text:raw,ts:Date.now()}]:[];}return[];}
+function renderNoteCards(type,b){const list=type==='about'?parseNotes(b.notes?.about):parseNotes(b.notes?.final);const container=document.getElementById(type+'-cards');container.innerHTML=list.map(n=>`<div class="note-card"><div>${esc(n.text)}</div><div class="note-card-ts">${shortDate(n.ts)}</div><button class="note-card-del" onclick="deleteNote('${type}','${n.id}')" title="Delete">&#x2715;</button></div>`).join('');}
+async function addNote(type){const b=getBook(currentBookId);if(!b)return;const el=document.getElementById('note-'+type);const text=el.value.trim();if(!text){toast('Write something first');return;}const notes=parseNotes(type==='about'?b.notes?.about:b.notes?.final);notes.push({id:Date.now().toString(),text,ts:Date.now()});if(!b.notes)b.notes={about:'',final:''};if(type==='about')b.notes.about=JSON.stringify(notes);else b.notes.final=JSON.stringify(notes);el.value='';renderNoteCards(type,b);toast('Note saved');await apiSaveBook(b);}
+async function deleteNote(type,id){const b=getBook(currentBookId);if(!b)return;let notes=parseNotes(type==='about'?b.notes?.about:b.notes?.final);notes=notes.filter(n=>n.id!==id);if(!b.notes)b.notes={about:'',final:''};if(type==='about')b.notes.about=JSON.stringify(notes);else b.notes.final=JSON.stringify(notes);renderNoteCards(type,b);toast('Note deleted');await apiSaveBook(b);}
+async function saveDate(which){const b=getBook(currentBookId);if(!b)return;const el=document.getElementById(which==='started'?'date-started':'date-finished');const val=el.value?new Date(el.value+'T12:00:00').getTime():null;if(which==='started')b.startedAt=val;else b.finishedAt=val;await apiSaveBook(b);toast('Date updated');}
+function toggleSpoilers(){const body=document.getElementById('spoiler-body');const arrow=document.getElementById('spoiler-arrow');body.classList.toggle('open');arrow.classList.toggle('open');}
+let spoilerTimer;
+function saveSpoilers(){const b=getBook(currentBookId);if(!b)return;b.spoilers=document.getElementById('note-spoilers').value;clearTimeout(spoilerTimer);document.getElementById('save-spoilers').textContent='Saving...';spoilerTimer=setTimeout(async()=>{await apiSaveBook(b);document.getElementById('save-spoilers').textContent='Saved';setTimeout(()=>{document.getElementById('save-spoilers').textContent='';},2000);},1000);}
 async function confirmDeleteBook(){const b=getBook(currentBookId);if(!b)return;showConfirm(`Delete "${b.title}"?`,async()=>{books=books.filter(x=>x.id!==currentBookId);toast('Book deleted');showView('home');await apiDeleteBook(currentBookId);currentBookId=null;});}
 
 /* === ENTRIES === */
@@ -807,10 +850,11 @@ async function saveEntry(){if(!entryPos){toast('Pick where you are');return;}if(
 async function deleteEntry(id){const b=getBook(currentBookId);if(!b)return;showConfirm('Delete this entry?',async()=>{b.entries=b.entries.filter(e=>e.id!==id);renderJourney(b);toast('Entry deleted');await apiDeleteEntry(id);});}
 
 /* === AI === */
-function renderAI(b){const a=document.getElementById('ai-area'),g=document.getElementById('btn-ai-gen'),r=document.getElementById('btn-ai-regen');if(b.aiSummary){g.style.display='none';r.style.display='inline-flex';a.innerHTML=`<div class="ai-box"><div class="ai-box-header">Your Reading Summary</div><div class="ai-content">${renderAIHTML(b.aiSummary)}</div></div><button class="btn-secondary" onclick="editAI()" style="margin-top:8px">Edit Summary</button>`;}else{g.style.display='inline-flex';r.style.display='none';a.innerHTML='';}}
+function renderAI(b){const a=document.getElementById('ai-area'),g=document.getElementById('btn-ai-gen'),r=document.getElementById('btn-ai-regen');if(b.aiSummary){g.style.display='none';r.style.display='inline-flex';a.innerHTML=`<div class="ai-box"><div class="ai-box-header">Your Reading Summary</div><div class="ai-content">${renderAIHTML(b.aiSummary)}</div></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn-secondary" onclick="editAI()">Edit Summary</button><button class="btn-secondary" style="color:var(--rose)" onclick="deleteAI()">Delete</button></div>`;}else{g.style.display='inline-flex';r.style.display='none';a.innerHTML='';}}
 function renderAIHTML(t){return t.split(/\n(?=## )/).map(s=>{const l=s.trim().split('\n'),h=l[0].replace(/^#+\s*/,''),bd=l.slice(1).join('\n').trim(),html=bd.split('\n').map(x=>x.startsWith('- ')||x.startsWith('* ')?`<li>${esc(x.replace(/^[-*]\s*/,''))}</li>`:`<p>${esc(x)}</p>`).join('');return`<div class="ai-section-title">${esc(h)}</div><div class="ai-section-body">${/^[-*] /m.test(bd)?'<ul>'+html+'</ul>':html}</div>`;}).join('');}
 function editAI(){const b=getBook(currentBookId);if(!b)return;document.getElementById('ai-area').innerHTML=`<div class="ai-edit"><textarea id="ai-edit-ta">${b.aiSummary||''}</textarea></div><button class="btn-primary sage" onclick="saveAISummary()" style="margin-top:10px">Save</button>`;}
 async function saveAISummary(){const b=getBook(currentBookId);if(!b)return;b.aiSummary=document.getElementById('ai-edit-ta').value;renderAI(b);toast('Summary saved');await apiSaveBook(b);}
+async function deleteAI(){const b=getBook(currentBookId);if(!b)return;b.aiSummary=null;renderAI(b);toast('Summary deleted');await apiSaveBook(b);}
 async function generateAI(){
   const b=getBook(currentBookId);if(!b)return;
   const a=document.getElementById('ai-area');
@@ -911,6 +955,7 @@ function toggleMic(fieldId){
 /* === INIT === */
 document.addEventListener('click',e=>{if(!e.target.closest('.suggest-wrap'))document.getElementById('suggest-list').classList.remove('open');});
 checkAuth();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
 </script>
 </body>
 </html>
