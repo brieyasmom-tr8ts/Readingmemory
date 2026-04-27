@@ -250,7 +250,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--cream);padding:10px 20px;border-radius:50px;font-size:.88rem;opacity:0;transition:all .3s;z-index:900;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .auth-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center}
-.auth-logo{margin-bottom:8px}
+.auth-logo{margin-bottom:8px;overflow:visible}
 .auth-title{font-family:var(--font-display);font-size:1.8rem;font-weight:700;color:var(--ink);margin-bottom:4px}
 .auth-sub{font-size:.92rem;color:var(--sepia);margin-bottom:32px}
 .auth-form{width:100%;max-width:320px;display:flex;flex-direction:column;gap:14px}
@@ -279,7 +279,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 <body>
 
 <div id="auth-screen" class="auth-screen" style="display:none">
-  <div class="auth-logo" style="margin-bottom:24px"><img src="/logo.png" alt="ReadThat.me" style="width:200px;height:auto"></div>
+  <div class="auth-logo" style="margin-bottom:24px"><img src="/logo.png" alt="ReadThat.me" style="width:260px;max-width:70vw;height:auto;display:block"></div>
   <div class="auth-form">
     <input type="text" class="field-input" id="auth-name" placeholder="Your name" style="display:none">
     <input type="email" class="field-input" id="auth-email" placeholder="Email">
