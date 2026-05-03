@@ -1,4 +1,4 @@
-const CACHE = 'readthat-v1';
+const CACHE = 'readthat-v2';
 const SHELL = [
   '/',
   '/index.html',
