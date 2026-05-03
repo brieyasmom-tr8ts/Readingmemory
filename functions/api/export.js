@@ -1,4 +1,5 @@
 import { json } from '../_auth.js';
+import { ensureHighlights } from '../_schema.js';
 
 // GET /api/export — return the user's full library as JSON, suitable for
 // downloading as a backup. Includes books, entries, highlights, and
@@ -7,19 +8,15 @@ export async function onRequestGet(context) {
   const { env, data } = context;
   const userId = data.userId;
 
-  const [user, booksRes, entriesRes, subsRes] = await Promise.all([
+  await ensureHighlights(env);
+
+  const [user, booksRes, entriesRes, subsRes, highlightsRes] = await Promise.all([
     env.DB.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').bind(userId).first(),
     env.DB.prepare('SELECT * FROM books WHERE user_id = ? ORDER BY created_at ASC').bind(userId).all(),
     env.DB.prepare('SELECT * FROM entries WHERE user_id = ? ORDER BY created_at ASC').bind(userId).all(),
     env.DB.prepare('SELECT category, name FROM custom_subcategories WHERE user_id = ?').bind(userId).all(),
+    env.DB.prepare('SELECT * FROM highlights WHERE user_id = ? ORDER BY created_at ASC').bind(userId).all(),
   ]);
-
-  let highlightsRes = { results: [] };
-  try {
-    highlightsRes = await env.DB.prepare('SELECT * FROM highlights WHERE user_id = ? ORDER BY created_at ASC').bind(userId).all();
-  } catch (_) {
-    // Table may not exist yet on older D1 instances.
-  }
 
   const payload = {
     exportedAt: Date.now(),

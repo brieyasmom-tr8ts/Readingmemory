@@ -1,4 +1,5 @@
 import { generateId, json } from '../_auth.js';
+import { ensureHighlights } from '../_schema.js';
 
 // POST /api/highlights — add a highlight/quote to a book
 export async function onRequestPost(context) {
@@ -8,6 +9,8 @@ export async function onRequestPost(context) {
 
   if (!body.bookId) return json({ error: 'bookId required' }, 400);
   if (!body.text || !body.text.trim()) return json({ error: 'text required' }, 400);
+
+  await ensureHighlights(env);
 
   const book = await env.DB.prepare('SELECT id FROM books WHERE id = ? AND user_id = ?')
     .bind(body.bookId, userId).first();
@@ -29,6 +32,8 @@ export async function onRequestDelete(context) {
   const highlightId = url.searchParams.get('id');
 
   if (!highlightId) return json({ error: 'Highlight id required' }, 400);
+
+  await ensureHighlights(env);
 
   await env.DB.prepare('DELETE FROM highlights WHERE id = ? AND user_id = ?')
     .bind(highlightId, userId).run();
