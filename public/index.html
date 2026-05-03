@@ -767,17 +767,39 @@ function handleCoverInput(e){
   reader.readAsDataURL(file);
   e.target.value='';
 }
+// Downscale + re-encode to JPEG so we don't push 8 MB phone photos (or
+// HEIC) at Claude's vision API, which silently fails for both reasons.
+function downscaleImage(dataURL,maxDim=1280,quality=0.85){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(!w||!h){resolve(dataURL);return;}
+      if(w>maxDim||h>maxDim){const r=w>h?maxDim/w:maxDim/h;w=Math.round(w*r);h=Math.round(h*r);}
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      try{c.getContext('2d').drawImage(img,0,0,w,h);resolve(c.toDataURL('image/jpeg',quality));}
+      catch(_){resolve(dataURL);}
+    };
+    img.onerror=()=>resolve(null);
+    img.src=dataURL;
+  });
+}
 async function readCoverWithAI(dataURL){
   const titleField=document.getElementById('add-title');
   const authorField=document.getElementById('add-author');
-  // Only auto-fill if fields are empty
   if(titleField.value.trim()&&authorField.value.trim())return;
+  toast('Reading cover...');
   try{
-    const d=await api('read-cover',{method:'POST',body:{image:dataURL}});
+    const compact=await downscaleImage(dataURL,1280,0.85);
+    if(!compact){toast("Couldn't open that photo — try a different one");return;}
+    const d=await api('read-cover',{method:'POST',body:{image:compact}});
     if(d.title&&!titleField.value.trim()){titleField.value=d.title;checkDuplicate(d.title);}
     if(d.author&&!authorField.value.trim()){authorField.value=d.author;}
     if(d.title||d.author)toast('Found: '+(d.title||'')+(d.author?' by '+d.author:''));
-  }catch(x){/* silent fail */}
+    else toast("Couldn't read the cover — try typing it in");
+  }catch(x){
+    toast("Couldn't read cover: "+(x.message||'try again'));
+  }
 }
 
 /* Crop — draggable edges over the image */
