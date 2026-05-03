@@ -1,4 +1,5 @@
 import { generateId, json } from '../_auth.js';
+import { ensureHighlights } from '../_schema.js';
 
 // GET /api/books — list all books for the user (with entries)
 export async function onRequestGet(context) {
@@ -25,20 +26,17 @@ export async function onRequestGet(context) {
       });
     });
 
+    await ensureHighlights(env);
     const highlightsByBook = {};
-    try {
-      const highlightsResult = await env.DB.prepare(
-        'SELECT * FROM highlights WHERE user_id = ? ORDER BY created_at ASC'
-      ).bind(userId).all();
-      (highlightsResult.results || []).forEach(h => {
-        if (!highlightsByBook[h.book_id]) highlightsByBook[h.book_id] = [];
-        highlightsByBook[h.book_id].push({
-          id: h.id, text: h.text, page: h.page || '', ts: h.created_at
-        });
+    const highlightsResult = await env.DB.prepare(
+      'SELECT * FROM highlights WHERE user_id = ? ORDER BY created_at ASC'
+    ).bind(userId).all();
+    (highlightsResult.results || []).forEach(h => {
+      if (!highlightsByBook[h.book_id]) highlightsByBook[h.book_id] = [];
+      highlightsByBook[h.book_id].push({
+        id: h.id, text: h.text, page: h.page || '', ts: h.created_at
       });
-    } catch (_) {
-      // Table may not exist yet on older D1 instances — apply migration-v4.sql.
-    }
+    });
 
     books.forEach(b => {
       b.entries = entriesByBook[b.id] || [];
