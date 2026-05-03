@@ -413,6 +413,19 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
           <button class="btn-save-note" onclick="addNote('final')">Save</button>
         </div>
       </div>
+      <div class="section">
+        <div class="section-title">Highlights</div>
+        <div class="note-cards" id="highlight-cards"></div>
+        <div class="note-add-row">
+          <textarea class="field-input" id="highlight-text" placeholder="Type a passage, or snap a photo of the page..." rows="2" style="flex:1"></textarea>
+          <button class="btn-save-note" onclick="addHighlight()">Save</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+          <input type="file" id="highlight-photo" accept="image/*" style="display:none" onchange="handleHighlightPhoto(event)">
+          <button class="btn-secondary" onclick="document.getElementById('highlight-photo').click()">&#x1f4f7; Snap a quote</button>
+          <input type="text" id="highlight-page" placeholder="Page (optional)" style="flex:1;min-width:120px" class="field-input">
+        </div>
+      </div>
       <div class="section" id="spoiler-section" style="display:none">
         <div class="section-title spoiler-toggle" onclick="toggleSpoilers()"><span class="arrow" id="spoiler-arrow">&#x25B6;</span> Spoilers &amp; Key Moments</div>
         <div class="spoiler-body" id="spoiler-body">
@@ -620,7 +633,7 @@ async function loadLocal(){
 function getQueue(){const k=userKey('rm_queue_');if(!k)return [];try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return [];}}
 function setQueue(q){const k=userKey('rm_queue_');if(!k)return;try{localStorage.setItem(k,JSON.stringify(q));}catch(e){}updateSyncIndicator();}
 function pushQueue(item){const q=getQueue();q.push({...item,qid:(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random())});setQueue(compactQueue(q));}
-function compactQueue(q){const seen=new Set();const out=[];for(let i=q.length-1;i>=0;i--){const it=q[i];let key='other:'+it.qid;if(it.op==='saveBook'||it.op==='deleteBook')key='book:'+it.payload.id;else if(it.op==='saveEntry'||it.op==='deleteEntry')key='entry:'+it.payload.id;if(seen.has(key))continue;seen.add(key);out.unshift(it);}return out;}
+function compactQueue(q){const seen=new Set();const out=[];for(let i=q.length-1;i>=0;i--){const it=q[i];let key='other:'+it.qid;if(it.op==='saveBook'||it.op==='deleteBook')key='book:'+it.payload.id;else if(it.op==='saveEntry'||it.op==='deleteEntry')key='entry:'+it.payload.id;else if(it.op==='saveHighlight'||it.op==='deleteHighlight')key='highlight:'+it.payload.id;if(seen.has(key))continue;seen.add(key);out.unshift(it);}return out;}
 function isOffline(){return typeof navigator!=='undefined'&&navigator.onLine===false;}
 function updateSyncIndicator(){const el=document.getElementById('sync-pill');if(!el)return;const txt=document.getElementById('sync-pill-text');const q=getQueue();if(isOffline()){el.className='sync-pill show offline';txt.textContent=q.length?`Offline · ${q.length} change${q.length>1?'s':''} saved locally`:'Offline · changes saved on this device';return;}if(q.length){el.className='sync-pill show syncing';txt.textContent=`Syncing ${q.length} change${q.length>1?'s':''}...`;return;}el.className='sync-pill';txt.textContent='';}
 
@@ -669,6 +682,16 @@ async function apiDeleteEntry(id){
   try{await api('entries?id='+id,{method:'DELETE'});}
   catch(x){pushQueue({op:'deleteEntry',payload:{id}});}
 }
+async function apiSaveHighlight(bid,h){
+  await persistLocal();
+  try{await api('highlights',{method:'POST',body:{bookId:bid,...h}});}
+  catch(x){pushQueue({op:'saveHighlight',payload:{bookId:bid,...h}});}
+}
+async function apiDeleteHighlight(id){
+  await persistLocal();
+  try{await api('highlights?id='+id,{method:'DELETE'});}
+  catch(x){pushQueue({op:'deleteHighlight',payload:{id}});}
+}
 async function syncQueue(){
   if(isOffline())return;
   const q=getQueue();
@@ -686,6 +709,11 @@ async function syncQueue(){
         await api('entries',{method:'POST',body:item.payload});
       }else if(item.op==='deleteEntry'){
         try{await api('entries?id='+item.payload.id,{method:'DELETE'});}
+        catch(e){if(!/not found/i.test(e.message))throw e;}
+      }else if(item.op==='saveHighlight'){
+        await api('highlights',{method:'POST',body:item.payload});
+      }else if(item.op==='deleteHighlight'){
+        try{await api('highlights?id='+item.payload.id,{method:'DELETE'});}
         catch(e){if(!/not found/i.test(e.message))throw e;}
       }
     }catch(e){
@@ -707,7 +735,14 @@ function closeConfirm(){document.getElementById('confirm-modal').classList.remov
 /* === HOME === */
 function renderHome(){
   const q=(document.getElementById('home-search').value||'').toLowerCase();
-  let f=books.filter(b=>{if(currentFilter!=='all'&&b.status!==currentFilter)return false;if(q&&!b.title.toLowerCase().includes(q)&&!(b.author||'').toLowerCase().includes(q))return false;return true;});
+  let f=books.filter(b=>{
+    if(currentFilter!=='all'&&b.status!==currentFilter)return false;
+    if(!q)return true;
+    if(b.title.toLowerCase().includes(q))return true;
+    if((b.author||'').toLowerCase().includes(q))return true;
+    if(searchableNotes(b).includes(q))return true;
+    return false;
+  });
   // Sort
   if(currentSort==='recent')f.sort((a,b)=>{
     const ao=STATUS_ORDER[a.status]??3,bo=STATUS_ORDER[b.status]??3;
@@ -744,6 +779,24 @@ function renderHome(){
 function setFilter(btn){document.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');currentFilter=btn.dataset.f;renderHome();}
 function cycleSort(){const i=SORT_OPTIONS.findIndex(s=>s.key===currentSort);currentSort=SORT_OPTIONS[(i+1)%SORT_OPTIONS.length].key;renderHome();}
 function statusLabel(s){return{want:'Want to Read',reading:'Reading',finished:'Finished'}[s]||s;}
+function searchableNotes(b){
+  // Concatenate every searchable text fragment for a book — note bodies,
+  // entry notes, highlight passages, AI summary — lowercased once for
+  // includes() in the home search filter.
+  const parts=[];
+  const addRaw=(raw)=>{
+    if(!raw)return;
+    try{const arr=JSON.parse(raw);if(Array.isArray(arr)){arr.forEach(n=>n&&n.text&&parts.push(n.text));return;}}catch(_){}
+    parts.push(raw);
+  };
+  addRaw(b.notes&&b.notes.about);
+  addRaw(b.notes&&b.notes.final);
+  addRaw(b.spoilers);
+  if(b.aiSummary)parts.push(b.aiSummary);
+  (b.entries||[]).forEach(e=>e.note&&parts.push(e.note));
+  (b.highlights||[]).forEach(h=>h.text&&parts.push(h.text));
+  return parts.join(' ').toLowerCase();
+}
 
 /* === ADD BOOK === */
 function openAddView(){
@@ -995,6 +1048,9 @@ function renderDetail(){
   document.getElementById('final-thoughts-group').style.display=b.status==='finished'?'':'none';
   document.getElementById('ai-section').style.display=b.status==='finished'?'':'none';
   if(b.status==='finished')renderAI(b);
+  renderHighlights(b);
+  document.getElementById('highlight-text').value='';
+  document.getElementById('highlight-page').value='';
   // Spoilers — show for reading and finished
   const showSpoilers=b.status==='reading'||b.status==='finished';
   document.getElementById('spoiler-section').style.display=showSpoilers?'':'none';
@@ -1057,8 +1113,94 @@ function pickEmoji(btn){document.querySelectorAll('#emoji-grid .emoji-btn').forE
 async function saveEntry(){if(!entryPos){toast('Pick where you are');return;}if(!entryEmoji){toast('Pick a mood');return;}const b=getBook(currentBookId);if(!b)return;const e={id:Date.now().toString(),position:entryPos,emoji:entryEmoji,note:document.getElementById('entry-note').value.trim(),ts:Date.now()};b.entries.push(e);entryPos=null;entryEmoji=null;document.querySelectorAll('.position-grid .pill').forEach(x=>x.classList.remove('active'));document.querySelectorAll('#emoji-grid .emoji-btn').forEach(x=>x.classList.remove('selected'));document.getElementById('entry-note').value='';toast('Entry saved!');showView('detail');await apiSaveEntry(b.id,e);}
 async function deleteEntry(id){const b=getBook(currentBookId);if(!b)return;showConfirm('Delete this entry?',async()=>{b.entries=b.entries.filter(e=>e.id!==id);renderJourney(b);toast('Entry deleted');await apiDeleteEntry(id);});}
 
+function renderHighlights(b){
+  if(!b.highlights)b.highlights=[];
+  const list=[...b.highlights].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const container=document.getElementById('highlight-cards');
+  container.innerHTML=list.length?list.map(h=>`<div class="note-card" id="hc-${h.id}"><div class="note-card-text" style="font-style:italic">"${esc(h.text)}"</div><div class="note-card-ts">${h.page?'p. '+esc(h.page)+' · ':''}${shortDate(h.ts)}</div><div class="note-card-actions"><button class="note-card-btn del" onclick="deleteHighlight('${h.id}')" title="Delete">&#x2715;</button></div></div>`).join(''):'';
+}
+async function addHighlight(){
+  const b=getBook(currentBookId);if(!b)return;
+  const text=document.getElementById('highlight-text').value.trim();
+  if(!text){toast('Type or snap a passage first');return;}
+  const page=document.getElementById('highlight-page').value.trim();
+  const h={id:Date.now().toString(),text,page,ts:Date.now()};
+  if(!b.highlights)b.highlights=[];
+  b.highlights.push(h);
+  document.getElementById('highlight-text').value='';
+  document.getElementById('highlight-page').value='';
+  renderHighlights(b);
+  toast('Highlight saved');
+  await apiSaveHighlight(b.id,h);
+}
+async function deleteHighlight(id){
+  const b=getBook(currentBookId);if(!b)return;
+  showConfirm('Delete this highlight?',async()=>{
+    b.highlights=(b.highlights||[]).filter(h=>h.id!==id);
+    renderHighlights(b);
+    toast('Highlight deleted');
+    await apiDeleteHighlight(id);
+  });
+}
+async function handleHighlightPhoto(e){
+  const file=e.target.files[0];if(!file)return;
+  e.target.value='';
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    const dataURL=ev.target.result;
+    toast('Reading the page...');
+    try{
+      const compact=await downscaleImage(dataURL,1280,0.85);
+      if(!compact){toast("Couldn't open that photo");return;}
+      const d=await api('read-highlight',{method:'POST',body:{image:compact}});
+      if(d.text){
+        document.getElementById('highlight-text').value=d.text;
+        if(d.page)document.getElementById('highlight-page').value=d.page;
+        toast('Got it — review and save');
+      }else{
+        toast("Couldn't read the page — try typing it");
+      }
+    }catch(x){
+      toast("Couldn't read page: "+(x.message||'try again'));
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
 /* === AI === */
 function renderAI(b){const a=document.getElementById('ai-area'),g=document.getElementById('btn-ai-gen'),r=document.getElementById('btn-ai-regen');if(b.aiSummary){g.style.display='none';r.style.display='inline-flex';a.innerHTML=`<div class="ai-box"><div class="ai-box-header">Your Reading Summary</div><div class="ai-content">${renderAIHTML(b.aiSummary)}</div></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn-secondary" onclick="editAI()">Edit Summary</button><button class="btn-secondary" style="color:var(--rose)" onclick="deleteAI()">Delete</button></div>`;}else{g.style.display='inline-flex';r.style.display='none';a.innerHTML='';}}
+async function exportLibrary(){
+  toast('Preparing export...');
+  try{
+    const r=await fetch('/api/export',{credentials:'same-origin'});
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Export failed');}
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`readthatme-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast('Library exported');
+  }catch(e){
+    toast('Export failed: '+(e.message||'try again'));
+  }
+}
+async function generateYearRecap(){
+  const year=window._recapYear||new Date().getFullYear();
+  const a=document.getElementById('recap-area');
+  a.innerHTML=`<div class="ai-box"><div class="ai-box-header">Generating ${year} recap...</div><div class="ai-loading"><div class="spinner"></div><span>Looking back at your year...</span></div></div>`;
+  try{
+    const d=await api('year-recap',{method:'POST',body:{year}});
+    if(!d.recap||d.count===0){
+      a.innerHTML=`<p style="color:var(--sepia);font-style:italic">No finished books in ${year} yet.</p>`;
+      return;
+    }
+    a.innerHTML=`<div class="ai-box"><div class="ai-box-header">${year} · ${d.count} book${d.count>1?'s':''}</div><div class="ai-content">${renderAIHTML(d.recap)}</div></div>`;
+  }catch(e){
+    a.innerHTML=`<p style="color:var(--rose);padding:12px;font-size:.9rem">${esc(e.message)||'Could not generate recap.'}</p>`;
+  }
+}
 function renderAIHTML(t){return t.split(/\n(?=## )/).map(s=>{const l=s.trim().split('\n'),h=l[0].replace(/^#+\s*/,''),bd=l.slice(1).join('\n').trim(),html=bd.split('\n').map(x=>x.startsWith('- ')||x.startsWith('* ')?`<li>${esc(x.replace(/^[-*]\s*/,''))}</li>`:`<p>${esc(x)}</p>`).join('');return`<div class="ai-section-title">${esc(h)}</div><div class="ai-section-body">${/^[-*] /m.test(bd)?'<ul>'+html+'</ul>':html}</div>`;}).join('');}
 function editAI(){const b=getBook(currentBookId);if(!b)return;document.getElementById('ai-area').innerHTML=`<div class="ai-edit"><textarea id="ai-edit-ta">${b.aiSummary||''}</textarea></div><button class="btn-primary sage" onclick="saveAISummary()" style="margin-top:10px">Save</button>`;}
 async function saveAISummary(){const b=getBook(currentBookId);if(!b)return;b.aiSummary=document.getElementById('ai-edit-ta').value;renderAI(b);toast('Summary saved');await apiSaveBook(b);}
@@ -1095,12 +1237,27 @@ function renderStats(){
   // Avg rating
   const rated=yr.filter(b=>b.rating);const avgR=rated.length?Math.round(rated.reduce((a,b)=>a+b.rating,0)/rated.length*10)/10:'-';
 
+  // Year-recap card with year picker
+  const finishedYears=[...new Set(fin.map(b=>b.finishedAt&&new Date(b.finishedAt).getFullYear()).filter(Boolean))].sort((a,b)=>b-a);
+  if(finishedYears.length===0)finishedYears.push(year);
+  const recapYear=window._recapYear||finishedYears[0];
+  window._recapYear=recapYear;
+  const yearOptions=finishedYears.map(y=>`<option value="${y}"${y===recapYear?' selected':''}>${y}</option>`).join('');
+
   document.getElementById('stats-content').innerHTML=`
+    <div class="stat-card"><div class="stat-card-label">Year in Review</div>
+      <div style="display:flex;gap:10px;align-items:center;margin:6px 0 10px;flex-wrap:wrap">
+        <select id="recap-year" class="field-input" style="flex:0 0 auto;width:auto;padding:8px 12px" onchange="window._recapYear=parseInt(this.value);document.getElementById('recap-area').innerHTML='';">${yearOptions}</select>
+        <button class="btn-primary amber" onclick="generateYearRecap()">Generate</button>
+      </div>
+      <div id="recap-area"></div>
+    </div>
     <div class="stat-card"><div class="stat-card-label">Books Finished This Year</div><div class="stat-card-value">${yr.length}</div><div class="stat-card-sub">${mo.length} this month · ${books.filter(b=>b.status==='reading').length} reading · Avg rating: ${avgR}</div></div>
     <div class="stat-card"><div class="stat-card-label">By Category (${year})</div><div class="cat-breakdown">${Object.entries(CATEGORIES).map(([k,c])=>`<div class="cat-row"><span class="cat-label">${c.label}</span><div class="cat-bar-wrap"><div class="cat-bar" style="width:${(cc[k]/mx)*100}%;background:${c.color}"></div></div><span class="cat-count">${cc[k]}</span></div>`).join('')}</div></div>
     <div class="stat-card"><div class="stat-card-label">Month by Month (${year})</div><div class="cat-breakdown">${mc.map((c,i)=>i<=month?`<div class="cat-row"><span class="cat-label" style="width:40px">${mn[i]}</span><div class="cat-bar-wrap"><div class="cat-bar" style="width:${(c/mxM)*100}%;background:var(--amber)"></div></div><span class="cat-count">${c}</span></div>`:'').join('')}</div></div>
     ${srcHTML?`<div class="stat-card"><div class="stat-card-label">By Source (${year})</div><div class="cat-breakdown">${srcHTML}</div></div>`:''}
-    <div class="stat-card"><div class="stat-card-label">Want to Read</div><div class="stat-card-value">${books.filter(b=>b.status==='want').length}</div></div>`;
+    <div class="stat-card"><div class="stat-card-label">Want to Read</div><div class="stat-card-value">${books.filter(b=>b.status==='want').length}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Backup</div><p style="font-size:.85rem;color:var(--sepia);margin:6px 0 12px">Download a JSON copy of your library — books, notes, entries, and highlights.</p><button class="btn-secondary" onclick="exportLibrary()">&#x2B07; Export my library</button></div>`;
 }
 
 /* === SHARE === */

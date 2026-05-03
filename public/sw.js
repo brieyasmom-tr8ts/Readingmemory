@@ -1,4 +1,4 @@
-const CACHE = 'readthat-v3';
+const CACHE = 'readthat-v4';
 const IMG_CACHE = 'readthat-img-v1';
 const SHELL = [
   '/',
