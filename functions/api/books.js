@@ -11,7 +11,7 @@ export async function onRequestGet(context) {
 
   const books = booksResult.results || [];
 
-  // Fetch entries for all books
+  // Fetch entries and highlights for all books
   if (books.length > 0) {
     const entriesResult = await env.DB.prepare(
       'SELECT * FROM entries WHERE user_id = ? ORDER BY created_at ASC'
@@ -24,8 +24,25 @@ export async function onRequestGet(context) {
         note: e.note, ts: e.created_at
       });
     });
+
+    const highlightsByBook = {};
+    try {
+      const highlightsResult = await env.DB.prepare(
+        'SELECT * FROM highlights WHERE user_id = ? ORDER BY created_at ASC'
+      ).bind(userId).all();
+      (highlightsResult.results || []).forEach(h => {
+        if (!highlightsByBook[h.book_id]) highlightsByBook[h.book_id] = [];
+        highlightsByBook[h.book_id].push({
+          id: h.id, text: h.text, page: h.page || '', ts: h.created_at
+        });
+      });
+    } catch (_) {
+      // Table may not exist yet on older D1 instances — apply migration-v4.sql.
+    }
+
     books.forEach(b => {
       b.entries = entriesByBook[b.id] || [];
+      b.highlights = highlightsByBook[b.id] || [];
       b.notes = { about: b.notes_about || '', final: b.notes_final || '' };
       b.subCategory = b.sub_category;
       b.recommendedBy = b.recommended_by;
