@@ -25,6 +25,11 @@ img{max-width:100%;display:block}
 .view.active{display:flex}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .topbar{position:sticky;top:0;z-index:100;background:var(--paper);border-bottom:1px solid var(--fog-md);padding:14px 20px;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px)}
+.sync-pill{display:none;align-items:center;gap:6px;padding:6px 12px;margin:0 20px 8px;border-radius:50px;font-size:.75rem;font-weight:700;background:var(--cream-dk);color:var(--sepia);letter-spacing:.03em}
+.sync-pill.show{display:inline-flex;align-self:flex-start}
+.sync-pill.offline{background:#fdecec;color:var(--rose)}
+.sync-pill.syncing{background:#fef3df;color:var(--amber)}
+.sync-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
 .topbar h1{font-family:var(--font-display);font-size:1.35rem;font-weight:600;color:var(--ink);flex:1}
 .topbar-sub{font-family:var(--font-display);font-size:1.1rem;font-weight:600;color:var(--ink);flex:1;font-style:italic}
 .btn-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--ink-soft);background:var(--fog);transition:background var(--transition),transform var(--transition);flex-shrink:0}
@@ -294,6 +299,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
   <div id="view-home" class="view active">
     <div class="topbar"><h1 style="display:flex;align-items:center;flex:1"><img src="/logo.png" alt="ReadThat.me" style="height:34px;width:auto"></h1><button class="btn-icon" onclick="showView('stats')">&#x1f4ca;</button></div>
     <div class="auth-bar" id="user-bar"><span id="user-name-display"></span><button onclick="doLogout()">Log out</button></div>
+    <div class="sync-pill" id="sync-pill"><span class="dot"></span><span id="sync-pill-text"></span></div>
     <div class="stats-strip" id="home-stats"></div>
     <div class="search-sort-bar">
       <input type="text" class="search-input" id="home-search" placeholder="Search books..." oninput="renderHome()">
@@ -511,16 +517,137 @@ async function api(p,o={}){const r=await fetch('/api/'+p,{method:o.method||'GET'
 function showAuth(){document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
 function showApp(){document.getElementById('auth-screen').style.display='none';document.getElementById('app').style.display='flex';}
 function toggleAuthMode(){authMode=authMode==='login'?'signup':'login';document.getElementById('auth-name').style.display=authMode==='signup'?'':'none';document.getElementById('auth-btn').textContent=authMode==='login'?'Log In':'Sign Up';document.getElementById('auth-switch-text').textContent=authMode==='login'?'No account?':'Already have one?';document.getElementById('auth-switch-btn').textContent=authMode==='login'?'Sign Up':'Log In';document.getElementById('auth-error').textContent='';}
-async function doAuth(){const e=document.getElementById('auth-email').value.trim(),p=document.getElementById('auth-pass').value,n=document.getElementById('auth-name').value.trim(),err=document.getElementById('auth-error'),btn=document.getElementById('auth-btn');err.textContent='';if(!e||!p){err.textContent='Email and password required';return;}btn.disabled=true;btn.textContent='Signing in...';try{const d=await api(authMode==='login'?'login':'signup',{method:'POST',body:authMode==='signup'?{email:e,password:p,name:n}:{email:e,password:p}});currentUser=d.user;document.getElementById('user-name-display').textContent=currentUser.name||currentUser.email;showApp();renderHome();loadBooks().then(()=>renderHome());}catch(x){err.textContent=x.message;}finally{btn.disabled=false;btn.textContent=authMode==='login'?'Log In':'Sign Up';}}
-async function doLogout(){try{await api('logout',{method:'POST'});}catch(x){}currentUser=null;books=[];showAuth();}
-async function checkAuth(){try{const d=await api('me');currentUser=d.user;document.getElementById('user-name-display').textContent=currentUser.name||currentUser.email;showApp();renderHome();loadBooks().then(()=>renderHome());}catch(x){showAuth();}}
+async function doAuth(){const e=document.getElementById('auth-email').value.trim(),p=document.getElementById('auth-pass').value,n=document.getElementById('auth-name').value.trim(),err=document.getElementById('auth-error'),btn=document.getElementById('auth-btn');err.textContent='';if(!e||!p){err.textContent='Email and password required';return;}btn.disabled=true;btn.textContent='Signing in...';try{const d=await api(authMode==='login'?'login':'signup',{method:'POST',body:authMode==='signup'?{email:e,password:p,name:n}:{email:e,password:p}});currentUser=d.user;try{localStorage.setItem(USER_CACHE_KEY,JSON.stringify(currentUser));}catch(_){}document.getElementById('user-name-display').textContent=currentUser.name||currentUser.email;showApp();renderHome();loadBooks().then(()=>renderHome());}catch(x){err.textContent=x.message;}finally{btn.disabled=false;btn.textContent=authMode==='login'?'Log In':'Sign Up';}}
+async function doLogout(){try{await api('logout',{method:'POST'});}catch(x){}try{localStorage.removeItem(USER_CACHE_KEY);}catch(_){}currentUser=null;books=[];showAuth();}
+async function checkAuth(){
+  try{
+    const d=await api('me');
+    currentUser=d.user;
+    try{localStorage.setItem(USER_CACHE_KEY,JSON.stringify(currentUser));}catch(_){}
+    document.getElementById('user-name-display').textContent=currentUser.name||currentUser.email;
+    showApp();renderHome();
+    loadBooks().then(()=>renderHome());
+  }catch(x){
+    // Offline or server unreachable — restore cached identity so local data is visible.
+    let cached=null;
+    try{cached=JSON.parse(localStorage.getItem(USER_CACHE_KEY)||'null');}catch(_){}
+    if(cached){
+      currentUser=cached;
+      document.getElementById('user-name-display').textContent=currentUser.name||currentUser.email;
+      showApp();renderHome();
+      loadBooks().then(()=>renderHome());
+    }else{
+      showAuth();
+    }
+  }
+}
 
-/* === DATA === */
-async function loadBooks(){try{const d=await api('books');books=d.books||[];customSubs=d.customSubs||{};}catch(x){books=[];}}
-async function apiSaveBook(b){try{await api('books/'+b.id,{method:'PUT',body:b});}catch(x){try{await api('books',{method:'POST',body:b});}catch(x2){console.warn('save failed',x2);}}}
-async function apiDeleteBook(id){try{await api('books/'+id,{method:'DELETE'});}catch(x){}}
-async function apiSaveEntry(bid,e){try{await api('entries',{method:'POST',body:{bookId:bid,...e}});}catch(x){}}
-async function apiDeleteEntry(id){try{await api('entries?id='+id,{method:'DELETE'});}catch(x){}}
+/* === DATA (offline-first, IndexedDB-backed) === */
+const USER_CACHE_KEY='rm_user';
+const IDB_NAME='readthat-db';
+const IDB_STORE='data';
+let _idbPromise=null;
+function idbOpen(){if(_idbPromise)return _idbPromise;_idbPromise=new Promise((resolve,reject)=>{if(typeof indexedDB==='undefined'){reject(new Error('No IndexedDB'));return;}const req=indexedDB.open(IDB_NAME,1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE);};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);req.onblocked=()=>reject(new Error('IDB blocked'));});return _idbPromise;}
+async function idbGet(key){try{const db=await idbOpen();return await new Promise((resolve,reject)=>{const tx=db.transaction(IDB_STORE,'readonly');const r=tx.objectStore(IDB_STORE).get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}catch(e){return undefined;}}
+async function idbSet(key,val){const db=await idbOpen();return new Promise((resolve,reject)=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(val,key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('aborted'));});}
+function userKey(prefix){const u=currentUser&&(currentUser.id||currentUser.email);return u?prefix+u:null;}
+let _persistWarned=false;
+async function persistLocal(){
+  const k=userKey('rm_data_');if(!k)return;
+  const payload={books,customSubs,savedAt:Date.now()};
+  // Primary: IndexedDB (handles megabytes of cover-photo data URLs without
+  // hitting the ~5 MB localStorage quota that was silently dropping saves).
+  try{await idbSet(k,payload);_persistWarned=false;return;}catch(e){console.warn('IDB persist failed',e);}
+  // Fallback: localStorage (small libraries only).
+  try{localStorage.setItem(k,JSON.stringify(payload));_persistWarned=false;}
+  catch(e){console.warn('localStorage persist failed',e);if(!_persistWarned){_persistWarned=true;toast("Couldn't save locally — storage full");}}
+}
+async function loadLocal(){
+  const k=userKey('rm_data_');if(!k)return null;
+  try{const fromIdb=await idbGet(k);if(fromIdb)return fromIdb;}catch(_){}
+  // Migration path: read from old localStorage cache, copy into IDB.
+  try{const raw=localStorage.getItem(k);if(!raw)return null;const parsed=JSON.parse(raw);idbSet(k,parsed).catch(()=>{});return parsed;}catch(e){return null;}
+}
+function getQueue(){const k=userKey('rm_queue_');if(!k)return [];try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return [];}}
+function setQueue(q){const k=userKey('rm_queue_');if(!k)return;try{localStorage.setItem(k,JSON.stringify(q));}catch(e){}updateSyncIndicator();}
+function pushQueue(item){const q=getQueue();q.push({...item,qid:(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random())});setQueue(compactQueue(q));}
+function compactQueue(q){const seen=new Set();const out=[];for(let i=q.length-1;i>=0;i--){const it=q[i];let key='other:'+it.qid;if(it.op==='saveBook'||it.op==='deleteBook')key='book:'+it.payload.id;else if(it.op==='saveEntry'||it.op==='deleteEntry')key='entry:'+it.payload.id;if(seen.has(key))continue;seen.add(key);out.unshift(it);}return out;}
+function isOffline(){return typeof navigator!=='undefined'&&navigator.onLine===false;}
+function updateSyncIndicator(){const el=document.getElementById('sync-pill');if(!el)return;const txt=document.getElementById('sync-pill-text');const q=getQueue();if(isOffline()){el.className='sync-pill show offline';txt.textContent=q.length?`Offline · ${q.length} change${q.length>1?'s':''} saved locally`:'Offline · changes saved on this device';return;}if(q.length){el.className='sync-pill show syncing';txt.textContent=`Syncing ${q.length} change${q.length>1?'s':''}...`;return;}el.className='sync-pill';txt.textContent='';}
+
+async function loadBooks(){
+  // Drain any pending offline writes first so the server view reflects them.
+  await syncQueue();
+  // If we're offline or still have pending writes, the server view is stale —
+  // trust the local cache so offline edits aren't clobbered by a cached GET.
+  if(isOffline()||getQueue().length>0){
+    const cached=await loadLocal();
+    if(cached){books=cached.books||[];customSubs=cached.customSubs||{};}
+    updateSyncIndicator();
+    return;
+  }
+  try{
+    const d=await api('books');
+    books=d.books||[];customSubs=d.customSubs||{};
+    await persistLocal();
+  }catch(x){
+    const cached=await loadLocal();
+    if(cached){books=cached.books||[];customSubs=cached.customSubs||{};}
+    else if(!books.length){books=[];}
+  }
+  updateSyncIndicator();
+}
+async function apiSaveBook(b){
+  await persistLocal();
+  try{await api('books/'+b.id,{method:'PUT',body:b});}
+  catch(x){
+    try{await api('books',{method:'POST',body:b});}
+    catch(x2){pushQueue({op:'saveBook',payload:b});}
+  }
+}
+async function apiDeleteBook(id){
+  await persistLocal();
+  try{await api('books/'+id,{method:'DELETE'});}
+  catch(x){pushQueue({op:'deleteBook',payload:{id}});}
+}
+async function apiSaveEntry(bid,e){
+  await persistLocal();
+  try{await api('entries',{method:'POST',body:{bookId:bid,...e}});}
+  catch(x){pushQueue({op:'saveEntry',payload:{bookId:bid,...e}});}
+}
+async function apiDeleteEntry(id){
+  await persistLocal();
+  try{await api('entries?id='+id,{method:'DELETE'});}
+  catch(x){pushQueue({op:'deleteEntry',payload:{id}});}
+}
+async function syncQueue(){
+  if(isOffline())return;
+  const q=getQueue();
+  if(!q.length)return;
+  const remaining=[];
+  for(const item of q){
+    try{
+      if(item.op==='saveBook'){
+        try{await api('books/'+item.payload.id,{method:'PUT',body:item.payload});}
+        catch(e){await api('books',{method:'POST',body:item.payload});}
+      }else if(item.op==='deleteBook'){
+        try{await api('books/'+item.payload.id,{method:'DELETE'});}
+        catch(e){if(!/not found/i.test(e.message))throw e;}
+      }else if(item.op==='saveEntry'){
+        await api('entries',{method:'POST',body:item.payload});
+      }else if(item.op==='deleteEntry'){
+        try{await api('entries?id='+item.payload.id,{method:'DELETE'});}
+        catch(e){if(!/not found/i.test(e.message))throw e;}
+      }
+    }catch(e){
+      // Likely network failure — keep for next attempt.
+      remaining.push(item);
+    }
+  }
+  setQueue(remaining);
+  const synced=q.length-remaining.length;
+  if(synced>0)toast(`Synced ${synced} offline change${synced>1?'s':''}`);
+}
 
 /* === VIEWS === */
 function showView(n){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById('view-'+n).classList.add('active');if(n==='home')renderHome();if(n==='detail')renderDetail();if(n==='stats')renderStats();window.scrollTo(0,0);}
@@ -959,7 +1086,10 @@ function toggleMic(fieldId){
 
 /* === INIT === */
 document.addEventListener('click',e=>{if(!e.target.closest('.suggest-wrap'))document.getElementById('suggest-list').classList.remove('open');});
+window.addEventListener('online',async()=>{updateSyncIndicator();await syncQueue();if(currentUser){await loadBooks();renderHome();}});
+window.addEventListener('offline',updateSyncIndicator);
 checkAuth();
+updateSyncIndicator();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
 </script>
 </body>
