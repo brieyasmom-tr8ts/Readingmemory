@@ -8,7 +8,7 @@ export async function onRequest(context) {
   const path = url.pathname;
 
   // Public routes — no auth needed
-  if (path === '/api/signup' || path === '/api/login') {
+  if (path === '/api/signup' || path === '/api/login' || path === '/api/reset-password') {
     return next();
   }
 
