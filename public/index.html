@@ -509,7 +509,8 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
 <script>
 const CATEGORIES={novels:{label:'Novels',color:'var(--amber)',subs:['Fiction','Fantasy','Sci-Fi','Romance','Mystery / Thriller','Historical Fiction','Literary Fiction']},leadership:{label:'Leadership',color:'var(--sage)',subs:['Business','Self-Help','Management','Productivity','Biography']},christian:{label:'Christian Living',color:'#7b68ae',subs:['Devotional','Theology','Bible Study','Spiritual Growth','Marriage & Family']}};
 const SOURCES=['Kindle Unlimited','Libby','Purchased','Audible','Library','Borrowed','Other'];
-const SORT_OPTIONS=[{key:'recent',label:'Recent'},{key:'alpha',label:'A-Z'},{key:'rating',label:'Rating'},{key:'finished',label:'Date Finished'},{key:'started',label:'Date Started'}];
+const SORT_OPTIONS=[{key:'recent',label:'Default'},{key:'alpha',label:'A-Z'},{key:'rating',label:'Rating'},{key:'finished',label:'Date Finished'},{key:'started',label:'Date Started'}];
+const STATUS_ORDER={reading:0,want:1,finished:2};
 
 let books=[],customSubs={},currentBookId=null,currentFilter='all',currentSort='recent',tempCoverURL=null,addStatus='want',addCatMain=null,addCatSub=null,addSource='',entryPos=null,entryEmoji=null,suggestTimer=null,authMode='login',currentUser=null,noteTimer=null,pendingDescription='';
 
@@ -708,7 +709,12 @@ function renderHome(){
   const q=(document.getElementById('home-search').value||'').toLowerCase();
   let f=books.filter(b=>{if(currentFilter!=='all'&&b.status!==currentFilter)return false;if(q&&!b.title.toLowerCase().includes(q)&&!(b.author||'').toLowerCase().includes(q))return false;return true;});
   // Sort
-  if(currentSort==='recent')f.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(currentSort==='recent')f.sort((a,b)=>{
+    const ao=STATUS_ORDER[a.status]??3,bo=STATUS_ORDER[b.status]??3;
+    if(ao!==bo)return ao-bo;
+    if(a.status==='finished')return (b.finishedAt||b.createdAt||0)-(a.finishedAt||a.createdAt||0);
+    return (b.createdAt||0)-(a.createdAt||0);
+  });
   else if(currentSort==='alpha')f.sort((a,b)=>a.title.localeCompare(b.title));
   else if(currentSort==='rating')f.sort((a,b)=>(b.rating||0)-(a.rating||0));
   else if(currentSort==='finished')f.sort((a,b)=>(b.finishedAt||0)-(a.finishedAt||0));
