@@ -1,4 +1,4 @@
-const CACHE = 'readthat-v4';
+const CACHE = 'readthat-v5';
 const IMG_CACHE = 'readthat-img-v1';
 const SHELL = [
   '/',
@@ -28,6 +28,12 @@ function isImageRequest(req, url) {
   return /\.(png|jpe?g|gif|webp|svg|avif)(\?|$)/i.test(url.pathname);
 }
 
+function isAppShellRequest(req, url) {
+  if (url.origin !== self.location.origin) return false;
+  if (req.mode === 'navigate') return true;
+  return url.pathname === '/' || url.pathname === '/index.html';
+}
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
@@ -48,6 +54,24 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // App shell (HTML / navigation): network-first so deploys land without
+  // a service-worker version bump. Cache fallback keeps the app working
+  // offline.
+  if (isAppShellRequest(e.request, url)) {
+    e.respondWith(
+      fetch(e.request)
+        .then(r => {
+          if (r.ok) {
+            const clone = r.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
+          return r;
+        })
+        .catch(() => caches.match(e.request).then(cached => cached || caches.match('/index.html')))
+    );
+    return;
+  }
+
   // Images (book covers, including cross-origin): cache-first, cache opaque too
   if (isImageRequest(e.request, url)) {
     e.respondWith(
@@ -55,7 +79,6 @@ self.addEventListener('fetch', e => {
         cache.match(e.request).then(cached => {
           if (cached) return cached;
           return fetch(e.request).then(r => {
-            // Cache successful same-origin (r.ok) AND opaque cross-origin (status 0)
             if (r && (r.ok || r.type === 'opaque')) {
               cache.put(e.request, r.clone()).catch(() => {});
             }
@@ -67,7 +90,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Other static assets: cache-first, fall back to network
+  // Other static assets (manifest, icons, fonts): cache-first
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
