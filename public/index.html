@@ -429,7 +429,7 @@ textarea.field-input{resize:none;min-height:72px;line-height:1.5}
       <div class="section" id="spoiler-section" style="display:none">
         <div class="section-title spoiler-toggle" onclick="toggleSpoilers()"><span class="arrow" id="spoiler-arrow">&#x25B6;</span> Spoilers &amp; Key Moments</div>
         <div class="spoiler-body" id="spoiler-body">
-          <div class="note-cards spoiler-blur" id="spoiler-cards"></div>
+          <div class="note-cards spoiler-blur" id="spoilers-cards"></div>
           <div class="note-add-row">
             <div class="field-with-mic" style="flex:1">
               <textarea class="field-input" id="note-spoilers" placeholder="The twists and moments you'll want to remember..." rows="2"></textarea>
@@ -1104,7 +1104,7 @@ function editNote(type,id){const b=getBook(currentBookId);if(!b)return;const not
 async function saveEditNote(type,id){const b=getBook(currentBookId);if(!b)return;const notes=parseNotes(getNotesRaw(type,b));const n=notes.find(x=>x.id===id);if(!n)return;const text=document.getElementById('edit-'+id).value.trim();if(!text){toast('Note can\'t be empty');return;}n.text=text;setNotesRaw(type,b,JSON.stringify(notes));renderNoteCards(type,b);toast('Note updated');await apiSaveBook(b);}
 async function deleteNote(type,id){const b=getBook(currentBookId);if(!b)return;let notes=parseNotes(getNotesRaw(type,b));notes=notes.filter(n=>n.id!==id);setNotesRaw(type,b,JSON.stringify(notes));renderNoteCards(type,b);toast('Note deleted');await apiSaveBook(b);}
 async function saveDate(which){const b=getBook(currentBookId);if(!b)return;const el=document.getElementById(which==='started'?'date-started':'date-finished');const val=el.value?new Date(el.value+'T12:00:00').getTime():null;if(which==='started')b.startedAt=val;else b.finishedAt=val;await apiSaveBook(b);toast('Date updated');}
-function toggleSpoilers(){const body=document.getElementById('spoiler-body');const arrow=document.getElementById('spoiler-arrow');body.classList.toggle('open');arrow.classList.toggle('open');document.getElementById('spoiler-cards').classList.toggle('revealed');}
+function toggleSpoilers(){const body=document.getElementById('spoiler-body');const arrow=document.getElementById('spoiler-arrow');body.classList.toggle('open');arrow.classList.toggle('open');document.getElementById('spoilers-cards').classList.toggle('revealed');}
 async function confirmDeleteBook(){const b=getBook(currentBookId);if(!b)return;showConfirm(`Delete "${b.title}"?`,async()=>{books=books.filter(x=>x.id!==currentBookId);toast('Book deleted');showView('home');await apiDeleteBook(currentBookId);currentBookId=null;});}
 
 /* === ENTRIES === */
