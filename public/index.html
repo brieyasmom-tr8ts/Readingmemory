@@ -1059,6 +1059,7 @@ function renderDetail(){
 
 function renderRating(b){
   const area=document.getElementById('rating-area');
+  if(!area)return;
   if(b.status!=='finished'){area.innerHTML='';return;}
   let dots='';for(let i=1;i<=10;i++){const cls=b.rating&&i<=b.rating?(b.rating>=6?'filled high':'filled'):'';dots+=`<div class="rating-dot ${cls}" onclick="setRating(${i})">${i}</div>`;}
   area.innerHTML=`<div class="rating-row"><span class="rating-label">Rating</span><div class="rating-dots">${dots}</div><span class="rating-value">${b.rating||'-'}</span></div>`;
@@ -1067,6 +1068,7 @@ async function setRating(n){const b=getBook(currentBookId);if(!b)return;b.rating
 
 function renderRecommendBanner(b){
   const area=document.getElementById('recommend-banner-area');
+  if(!area)return;
   if(b.rating&&b.rating>=6){
     area.innerHTML=`<div class="recommend-banner">${b.rating}/10 — You loved this one!<div id="recs-area" style="margin-top:8px;font-size:.82rem;opacity:.9"></div></div>`;
   } else area.innerHTML='';
@@ -1083,12 +1085,14 @@ async function fetchRecommendations(b){
 
 function renderDetailSource(b){
   const area=document.getElementById('detail-source-area');
+  if(!area)return;
   area.innerHTML='<div style="font-size:.78rem;font-weight:700;color:var(--sepia);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Source</div><div class="source-row">'+SOURCES.map(s=>`<button class="source-pill${b.source===s?' active':''}" onclick="setSource('${s}')">${s}</button>`).join('')+'</div>';
 }
 async function setSource(s){const b=getBook(currentBookId);if(!b)return;b.source=b.source===s?'':s;renderDetailSource(b);await apiSaveBook(b);}
 
 function renderJourney(b){
   const list=document.getElementById('journey-list');
+  if(!list)return;
   if(!b.entries?.length){list.innerHTML='<p style="color:var(--sepia);font-size:.88rem;font-style:italic">No entries yet.</p>';return;}
   list.innerHTML=[...b.entries].reverse().map(e=>`<div class="entry-card"><div class="entry-emoji">${e.emoji}</div><div class="entry-body"><div class="entry-position">${esc(e.position)}</div>${e.note?`<div class="entry-note">${esc(e.note)}</div>`:''}<div class="entry-time">${fmtDate(e.ts)}</div></div><button class="entry-delete" onclick="deleteEntry('${e.id}')" title="Delete">&#x2715;</button></div>`).join('');
 }
@@ -1098,7 +1102,7 @@ async function saveRecommend(){const b=getBook(currentBookId);if(!b)return;b.rec
 function parseNotes(raw){if(!raw)return[];if(typeof raw==='string'){try{const p=JSON.parse(raw);if(Array.isArray(p))return p;}catch(e){}return raw.trim()?[{id:Date.now().toString(),text:raw,ts:Date.now()}]:[];}return[];}
 function getNotesRaw(type,b){if(type==='about')return b.notes?.about;if(type==='final')return b.notes?.final;if(type==='spoilers')return b.spoilers;return'';}
 function setNotesRaw(type,b,val){if(!b.notes)b.notes={about:'',final:''};if(type==='about')b.notes.about=val;else if(type==='final')b.notes.final=val;else if(type==='spoilers')b.spoilers=val;}
-function renderNoteCards(type,b){const list=parseNotes(getNotesRaw(type,b));const container=document.getElementById(type+'-cards');container.innerHTML=list.map(n=>`<div class="note-card" id="nc-${n.id}"><div class="note-card-text">${esc(n.text)}</div><div class="note-card-ts">${shortDate(n.ts)}</div><div class="note-card-actions"><button class="note-card-btn" onclick="editNote('${type}','${n.id}')" title="Edit">&#x270E;</button><button class="note-card-btn del" onclick="deleteNote('${type}','${n.id}')" title="Delete">&#x2715;</button></div></div>`).join('');}
+function renderNoteCards(type,b){const container=document.getElementById(type+'-cards');if(!container)return;const list=parseNotes(getNotesRaw(type,b));container.innerHTML=list.map(n=>`<div class="note-card" id="nc-${n.id}"><div class="note-card-text">${esc(n.text)}</div><div class="note-card-ts">${shortDate(n.ts)}</div><div class="note-card-actions"><button class="note-card-btn" onclick="editNote('${type}','${n.id}')" title="Edit">&#x270E;</button><button class="note-card-btn del" onclick="deleteNote('${type}','${n.id}')" title="Delete">&#x2715;</button></div></div>`).join('');}
 async function addNote(type){const b=getBook(currentBookId);if(!b)return;const el=document.getElementById('note-'+type);const text=el.value.trim();if(!text){toast('Write something first');return;}const notes=parseNotes(getNotesRaw(type,b));notes.push({id:Date.now().toString(),text,ts:Date.now()});setNotesRaw(type,b,JSON.stringify(notes));el.value='';renderNoteCards(type,b);toast('Note saved');await apiSaveBook(b);}
 function editNote(type,id){const b=getBook(currentBookId);if(!b)return;const notes=parseNotes(getNotesRaw(type,b));const n=notes.find(x=>x.id===id);if(!n)return;const card=document.getElementById('nc-'+id);card.innerHTML=`<textarea class="field-input" id="edit-${id}" rows="3">${esc(n.text)}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn-save-note" onclick="saveEditNote('${type}','${id}')">Save</button><button class="btn-secondary" style="padding:8px 14px;font-size:.78rem" onclick="renderNoteCards('${type}',getBook(currentBookId))">Cancel</button></div>`;document.getElementById('edit-'+id).focus();}
 async function saveEditNote(type,id){const b=getBook(currentBookId);if(!b)return;const notes=parseNotes(getNotesRaw(type,b));const n=notes.find(x=>x.id===id);if(!n)return;const text=document.getElementById('edit-'+id).value.trim();if(!text){toast('Note can\'t be empty');return;}n.text=text;setNotesRaw(type,b,JSON.stringify(notes));renderNoteCards(type,b);toast('Note updated');await apiSaveBook(b);}
@@ -1114,9 +1118,10 @@ async function saveEntry(){if(!entryPos){toast('Pick where you are');return;}if(
 async function deleteEntry(id){const b=getBook(currentBookId);if(!b)return;showConfirm('Delete this entry?',async()=>{b.entries=b.entries.filter(e=>e.id!==id);renderJourney(b);toast('Entry deleted');await apiDeleteEntry(id);});}
 
 function renderHighlights(b){
+  const container=document.getElementById('highlight-cards');
+  if(!container)return;
   if(!b.highlights)b.highlights=[];
   const list=[...b.highlights].sort((a,b)=>(b.ts||0)-(a.ts||0));
-  const container=document.getElementById('highlight-cards');
   container.innerHTML=list.length?list.map(h=>`<div class="note-card" id="hc-${h.id}"><div class="note-card-text" style="font-style:italic">"${esc(h.text)}"</div><div class="note-card-ts">${h.page?'p. '+esc(h.page)+' · ':''}${shortDate(h.ts)}</div><div class="note-card-actions"><button class="note-card-btn del" onclick="deleteHighlight('${h.id}')" title="Delete">&#x2715;</button></div></div>`).join(''):'';
 }
 async function addHighlight(){
@@ -1168,7 +1173,7 @@ async function handleHighlightPhoto(e){
 }
 
 /* === AI === */
-function renderAI(b){const a=document.getElementById('ai-area'),g=document.getElementById('btn-ai-gen'),r=document.getElementById('btn-ai-regen');if(b.aiSummary){g.style.display='none';r.style.display='inline-flex';a.innerHTML=`<div class="ai-box"><div class="ai-box-header">Your Reading Summary</div><div class="ai-content">${renderAIHTML(b.aiSummary)}</div></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn-secondary" onclick="editAI()">Edit Summary</button><button class="btn-secondary" style="color:var(--rose)" onclick="deleteAI()">Delete</button></div>`;}else{g.style.display='inline-flex';r.style.display='none';a.innerHTML='';}}
+function renderAI(b){const a=document.getElementById('ai-area'),g=document.getElementById('btn-ai-gen'),r=document.getElementById('btn-ai-regen');if(!a||!g||!r)return;if(b.aiSummary){g.style.display='none';r.style.display='inline-flex';a.innerHTML=`<div class="ai-box"><div class="ai-box-header">Your Reading Summary</div><div class="ai-content">${renderAIHTML(b.aiSummary)}</div></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn-secondary" onclick="editAI()">Edit Summary</button><button class="btn-secondary" style="color:var(--rose)" onclick="deleteAI()">Delete</button></div>`;}else{g.style.display='inline-flex';r.style.display='none';a.innerHTML='';}}
 async function exportLibrary(){
   toast('Preparing export...');
   try{
